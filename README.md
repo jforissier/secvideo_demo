@@ -1,30 +1,40 @@
 This project is a proof-of-concept for secure video playback on
-ARM/Trustzone hardware running Linux and OP-TEE.
-A linux application relies on OP-TEE and a Trusted Application to
-decrypt and display an image in a secure way.
+ARM Trustzone hardware running Linux and OP-TEE. A linux application relies
+on OP-TEE and a Trusted Application to decrypt and display an image in a
+secure way.
 
-The demo runs on a software model: ARM's FVP_Base_AEMv8A-AEMv8A.
+The demo runs on *Base FVP* software models such as
+`FVP_Base_AEMv8A-AEMv8A`. Note that the (free) *Foundation Platform* can
+*not* run this demo, because it lacks LCD display emulation. See
+http://www.arm.com/products/tools/models/fast-models/foundation-model.php for
+details.
 
-1. TL;DR
+## TL;DR
 
-Install prerequisites:
+1. Install the required compilers, tools and libraries
 ```sh
 $ sudo apt-get install uuid-dev gcc-arm-linux-gnueabihf
-
-# On x86_64 systems only
+# On x86_64 systems only #
 $ sudo apt-get install libc6:i386 libstdc++6:i386 libz1:i386
 ```
 
-Clone, build and run the demo:
+2. Define the FVP environment `run/env.sh`. Here is mine:
+```sh
+export ARMLMD_LICENSE_FILE=8224@127.0.0.1
+export PATH=~/FVP_Base_AEMv8A-AEMv8A/models/Linux_GCC-4.1:$PATH
+#FVP_CMD=FVP_Base_AEMv8A-AEMv8A
+```
+
+3. Clone, build and run the demo
 ```sh
 $ git clone https://github.com/jforissier/secvid_proto.git
 $ cd secvid_proto
 $ git submodule update --init
 $ make
-$ ./run.sh
+$ ./run/run.sh
 ```
 
-2. More information
+## More information
 
 The demo performs the following tasks:
 
