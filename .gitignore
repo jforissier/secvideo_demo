@@ -2,4 +2,5 @@
 /*.tar.gz
 /linux
 /.linux
+/.busybox
 /edk2

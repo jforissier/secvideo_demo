@@ -86,7 +86,7 @@ downloads/$(EDK2_TARBALL):
 	$(Q)$(CURL) $(EDK2_URL) -o $@
 
 
-gen_rootfs/.busybox: downloads/$(BUSYBOX_TARBALL)
+.busybox: downloads/$(BUSYBOX_TARBALL)
 	$(ECHO) '  TAR     gen_rootfs/busybox'
 	$(Q)rm -rf gen_rootfs/$(BUSYBOX_DIR) gen_rootfs/busybox
 	$(Q)cd gen_rootfs && tar xf ../downloads/$(BUSYBOX_TARBALL)
@@ -130,7 +130,7 @@ cleaner: clean
 	$(ECHO) '  CLEANER .'
 	$(Q)rm -rf $(LINUX_DIR) linux .linux
 	$(Q)rm -rf $(EDK2_DIR) edk2
-	$(Q)rm -rf gen_rootfs/$(BUSYBOX_DIR)
+	$(Q)rm -rf gen_rootfs/$(BUSYBOX_DIR) .busybox
 	$(Q)rm -rf toolchains/$(AARCH64_GCC_DIR)
 	$(Q)rm -rf toolchains/$(AARCH64_NONE_GCC_DIR)
 
@@ -217,7 +217,7 @@ clean-optee-client:
 #
 
 .PHONY: build-optee-linuxdriver
-build-optee-linuxdriver optee_linuxdriver/optee.ko: linux/.config $(aarch64-linux-gnu-gcc)
+build-optee-linuxdriver optee_linuxdriver/optee.ko: linux/arch/arm64/boot/Image $(aarch64-linux-gnu-gcc)
 	$(ECHO) '  BUILD   optee_linuxdriver'
 	$(Q)make -C linux \
 	    -j$(_NPROCESSORS_ONLN) \
@@ -326,8 +326,8 @@ build-arm-tf-bl2-bl31 $(ATF)/bl2.bin $(ATF)/bl31.bin: $(aarch64-none-elf-gcc)
 # The double-colon rules below are processed in order, which solves the issue.
 
 .PHONY: build-arm-tf-fip
-build-arm-tf-fip :: build-arm-tf-bl2-bl31 build-optee-os build-uefi
-build-arm-tf-fip :: $(ATF)/fip.bin
+build-arm-tf-fip:: build-arm-tf-bl2-bl31 build-optee-os build-uefi
+build-arm-tf-fip:: $(ATF)/fip.bin
 
 $(ATF)/fip.bin: $(ATF)/bl2.bin $(ATF)/bl31.bin optee_os/out/arm32-plat-vexpress/core/tee.bin edk2/Build/ArmVExpress-FVP-AArch64/RELEASE_GCC49/FV/FVP_AARCH64_EFI.fd $(aarch64-none-elf-gcc)
 	$(call arm-tf-make, fip)
@@ -346,9 +346,10 @@ clean-arm-tf:
 #
 
 .PHONY: build-rootfs
-build-rootfs run/filesystem.cpio.gz: linux/usr/gen_init_cpio $(optee-client-files) optee_linuxdriver/optee.ko
+build-rootfs:: build-filelist
+build-rootfs:: run/filesystem.cpio.gz
 
-run/filesystem.cpio.gz: gen_rootfs/filelist-tee.txt
+run/filesystem.cpio.gz: gen_rootfs/filelist-tee.txt linux/usr/gen_init_cpio $(optee-client-files) optee_linuxdriver/optee.ko
 	$(ECHO) "  GEN    $@"
 	$(Q)(cd gen_rootfs && gen_init_cpio filelist-tee.txt) | gzip >$@
 
@@ -359,11 +360,14 @@ gen_rootfs/filelist-tee.txt: gen_rootfs/filelist-final.txt tee-files.txt
 	    export TOP=$(PWD) ; \
 	    $(expand-env-var) <tee-files.txt >>$@
 
-gen_rootfs/filelist-final.txt: gen_rootfs/busybox $(aarch64-linux-gnu-gcc)
+.PHONY: build-filelist
+build-filelist gen_rootfs/filelist-final.txt: .busybox $(aarch64-linux-gnu-gcc)
 	$(ECHO) '  GEN    $@'
 	$(Q)cd gen_rootfs ; \
 	    export CC_DIR=$(PWD)/toolchains/$(AARCH64_GCC_DIR) ; \
-	    ./generate-cpio-rootfs.sh fvp-aarch64
+	    ./generate-cpio-rootfs.sh fvp-aarch64 nocpio
 
 clean-rootfs:
-	$(Q)rm -f run/filesystem.cpio.gz gen_rootfs/filelist-final.txt gen_rootfs/filelist-tee.txt
+	$(ECHO) "  CLEAN  gen_rootfs"
+	$(Q)cd gen_rootfs ; ./generate-cpio-rootfs.sh fvp-aarch64 clean
+	$(Q)rm -f run/filesystem.cpio.gz gen_rootfs/filelist-tee.txt
