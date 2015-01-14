@@ -18,10 +18,10 @@ $ sudo apt-get install uuid-dev gcc-arm-linux-gnueabihf
 $ sudo apt-get install libc6:i386 libstdc++6:i386 libz1:i386
 ```
 
-2. Define the FVP environment `run/env.sh`. Here is mine:
+2. Define the FVP environment in `run/env.sh`. Here is mine:
 ```sh
 export ARMLMD_LICENSE_FILE=8224@127.0.0.1
-export PATH=~/FVP_Base_AEMv8A-AEMv8A/models/Linux_GCC-4.1:$PATH
+export PATH=~/FVP_Base_AEMv8A-AEMv8A/models/Linux64_GCC-4.1:$PATH
 #FVP_CMD=FVP_Base_AEMv8A-AEMv8A
 ```
 

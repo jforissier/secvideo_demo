@@ -150,24 +150,24 @@ distclean: cleaner
 
 .PHONY: build-linux
 build-linux linux/arch/arm64/boot/Image: linux/.config $(aarch64-none-elf-gcc)
-	$(Q)make -C linux \
+	$(Q)$(MAKE) -C linux \
 	    -j$(_NPROCESSORS_ONLN) \
 	    ARCH=arm64 \
 	    CROSS_COMPILE="$(CCACHE)aarch64-none-elf-" \
 	    LOCALVERSION=
 
 linux/.config: .linux $(aarch64-none-elf-gcc)
-	$(Q)make -C linux ARCH=arm64 CROSS_COMPILE=aarch64-none-elf- defconfig
+	$(Q)$(MAKE) -C linux ARCH=arm64 CROSS_COMPILE=aarch64-none-elf- defconfig
 
 linux/usr/gen_init_cpio: linux/.config
-	$(Q)make -C linux ARCH=arm64 usr/gen_init_cpio
+	$(Q)$(MAKE) -C linux ARCH=arm64 usr/gen_init_cpio
 
 linux/scripts/dtc/dtc: linux/.config $(aarch64-none-elf-gcc)
-	$(Q)make -C linux ARCH=arm64 CROSS_COMPILE=aarch64-none-elf- scripts
+	$(Q)$(MAKE) -C linux ARCH=arm64 CROSS_COMPILE=aarch64-none-elf- scripts
 
 clean-linux:
 	$(ECHO) '  CLEAN   linux'
-	$(Q)-[ -d linux ] && make -C linux ARCH=arm64 CROSS_COMPILE=aarch64-none-elf- clean
+	$(Q)-[ -d linux ] && $(MAKE) -C linux ARCH=arm64 CROSS_COMPILE=aarch64-none-elf- clean
 
 #
 # OP-TEE
@@ -176,7 +176,7 @@ clean-linux:
 .PHONY: build-optee-os
 build-optee-os optee_os/out/arm32-plat-vexpress/core/tee.bin:
 	$(ECHO) '  BUILD   optee_os'
-	$(Q)make -C optee_os \
+	$(Q)$(MAKE) -C optee_os \
 	    -j$(_NPROCESSORS_ONLN) \
 	    CROSS_COMPILE="$(CCACHE)arm-linux-gnueabihf-" \
 	    PLATFORM=vexpress-fvp \
@@ -184,7 +184,7 @@ build-optee-os optee_os/out/arm32-plat-vexpress/core/tee.bin:
 
 clean-optee-os:
 	$(ECHO) '  CLEAN   optee_os'
-	$(Q)make -C optee_os \
+	$(Q)$(MAKE) -C optee_os \
 	    -j$(_NPROCESSORS_ONLN) \
 	    CROSS_COMPILE="$(CCACHE)arm-linux-gnueabihf-" \
 	    PLATFORM=vexpress-fvp \
@@ -201,13 +201,13 @@ optee-client-files := optee_client/out/export/lib/libteec.so.1.0 \
 .PHONY: build-optee-client
 build-optee-client $(optee-client-files): $(aarch64-linux-gnu-gcc)
 	$(ECHO) '  BUILD   optee_client'
-	$(Q)make -C optee_client \
+	$(Q)$(MAKE) -C optee_client \
 	    -j$(_NPROCESSORS_ONLN) \
 	    CROSS_COMPILE="$(CCACHE)aarch64-linux-gnu-"
 
 clean-optee-client:
 	$(ECHO) '  CLEAN   optee_client'
-	$(Q)make -C optee_client \
+	$(Q)$(MAKE) -C optee_client \
 	    -j$(_NPROCESSORS_ONLN) \
 	    CROSS_COMPILE="$(CCACHE)arm-linux-gnueabihf-" \
 	    clean
@@ -219,7 +219,7 @@ clean-optee-client:
 .PHONY: build-optee-linuxdriver
 build-optee-linuxdriver optee_linuxdriver/optee.ko: linux/arch/arm64/boot/Image $(aarch64-linux-gnu-gcc)
 	$(ECHO) '  BUILD   optee_linuxdriver'
-	$(Q)make -C linux \
+	$(Q)$(MAKE) -C linux \
 	    -j$(_NPROCESSORS_ONLN) \
 	    ARCH=arm64 \
 	    CROSS_COMPILE="$(CCACHE)aarch64-linux-gnu-" \
@@ -242,7 +242,7 @@ clean-dtb:
 
 clean-optee-linuxdriver: clean-dtb
 	$(ECHO) '  CLEAN   optee_linuxdriver'
-	$(Q)-[ -d linux ] && make -C linux \
+	$(Q)-[ -d linux ] && $(MAKE) -C linux \
 	    -j$(_NPROCESSORS_ONLN) \
 	    ARCH=arm64 \
 	    CROSS_COMPILE="$(CCACHE)aarch64-linux-gnu-" \
@@ -259,7 +259,7 @@ build-uefi edk2/Build/ArmVExpress-FVP-AArch64/RELEASE_GCC49/FV/FVP_AARCH64_EFI.f
 	$(ECHO) '  BUILD   edk2'
 	$(Q)set -e ; cd edk2 ; export GCC49_AARCH64_PREFIX='"$(CCACHE)aarch64-none-elf-"' ; \
 	    . edksetup.sh ; \
-	    make -f ArmPlatformPkg/Scripts/Makefile \
+	    $(MAKE) -f ArmPlatformPkg/Scripts/Makefile \
 		EDK2_ARCH=AARCH64 \
 		EDK2_DSC=ArmPlatformPkg/ArmVExpressPkg/ArmVExpress-FVP-AArch64.dsc \
 		EDK2_TOOLCHAIN=GCC49 EDK2_BUILD=RELEASE \
@@ -270,14 +270,14 @@ edk2/.BaseTools: edk2
 	$(ECHO) '  BUILD   edk2/BaseTools'
 	$(Q)set -e ; cd edk2 ; export GCC49_AARCH64_PREFIX='"$(CCACHE)aarch64-none-elf-"' ; \
 	    . edksetup.sh ; \
-	    make -C BaseTools CC="$(CCACHE)gcc" CXX="$(CCACHE)g++" ; \
+	    $(MAKE) -C BaseTools CC="$(CCACHE)gcc" CXX="$(CCACHE)g++" ; \
 	    touch .BaseTools
 
 clean-uefi: clean-uefi-basetools
 	$(ECHO) '  CLEAN   edk2'
 	$(Q)-[ -d edk2 ] && ( set -e ; cd edk2 ; \
 	    . edksetup.sh ; \
-	    make -f ArmPlatformPkg/Scripts/Makefile \
+	    $(MAKE) -f ArmPlatformPkg/Scripts/Makefile \
 		EDK2_ARCH=AARCH64 \
 		EDK2_DSC=ArmPlatformPkg/ArmVExpressPkg/ArmVExpress-FVP-AArch64.dsc \
 		EDK2_TOOLCHAIN=GCC49 EDK2_BUILD=RELEASE \
@@ -288,7 +288,7 @@ clean-uefi-basetools:
 	$(ECHO) '  CLEAN   edk2/BaseTools'
 	$(Q)-[ -d edk2 ] && ( set -e ; cd edk2 ; \
 	    . edksetup.sh ; \
-	    make -C BaseTools clean ; \
+	    $(MAKE) -C BaseTools clean ; \
 	    rm -f .BaseTools)
 
 #
@@ -305,7 +305,7 @@ define arm-tf-make
 	$(Q)export CFLAGS="-O0 -gdwarf-2" ; \
 	    export BL32=$(PWD)/optee_os/out/arm32-plat-vexpress/core/tee.bin ; \
 	    export BL33=$(PWD)/edk2/Build/ArmVExpress-FVP-AArch64/RELEASE_GCC49/FV/FVP_AARCH64_EFI.fd ; \
-	    make -C arm-trusted-firmware \
+	    $(MAKE) -C arm-trusted-firmware \
 		CROSS_COMPILE="$(CCACHE)aarch64-none-elf-" \
 		DEBUG=1 \
 		FVP_TSP_RAM_LOCATION=tdram \
@@ -319,10 +319,10 @@ endef
 build-arm-tf-bl2-bl31 $(ATF)/bl2.bin $(ATF)/bl31.bin: $(aarch64-none-elf-gcc)
 	$(call arm-tf-make, bl2 bl31)
 
-# "make -C arm-trusted-firmware fip" always updates fip.bin, even if it is
+# "$(MAKE) -C arm-trusted-firmware fip" always updates fip.bin, even if it is
 # up-to-date, so we can't add just add build-arm-tf-fip and fip.bin to the
-# left side of the above rule and add 'fip' to the make command. This would
-# result in "make build-arm-tf-fip" always touching fip.bin.
+# left side of the above rule and add 'fip' to the $(MAKE) command. This would
+# result in "$(MAKE) build-arm-tf-fip" always touching fip.bin.
 # The double-colon rules below are processed in order, which solves the issue.
 
 .PHONY: build-arm-tf-fip
@@ -338,7 +338,7 @@ build-arm-tf-bl1 arm-trusted-firmware/build/fvp/debug/bl1.bin: $(aarch64-none-el
 
 clean-arm-tf:
 	$(ECHO) '  CLEAN   arm-trusted-firmware'
-	$(Q)make -C arm-trusted-firmware PLAT=fvp DEBUG=1 clean
+	$(Q)$(MAKE) -C arm-trusted-firmware PLAT=fvp DEBUG=1 clean
 
 
 #
@@ -356,7 +356,7 @@ run/filesystem.cpio.gz: gen_rootfs/filelist-tee.txt linux/usr/gen_init_cpio $(op
 gen_rootfs/filelist-tee.txt: gen_rootfs/filelist-final.txt tee-files.txt
 	$(ECHO) '  GEN    $@'
 	$(Q)cat gen_rootfs/filelist-final.txt | sed '/fbtest/d' >$@
-	$(Q)export KERNEL_VERSION=`cd linux ; make -s kernelversion` ;\
+	$(Q)export KERNEL_VERSION=`cd linux ; $(MAKE) -s kernelversion` ;\
 	    export TOP=$(PWD) ; \
 	    $(expand-env-var) <tee-files.txt >>$@
 
