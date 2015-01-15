@@ -11,27 +11,37 @@ details.
 
 ## TL;DR
 
-1. Install the required compilers, tools and libraries
+1. Install the required compilers, tools and libraries:
 ```sh
 $ sudo apt-get install uuid-dev gcc-arm-linux-gnueabihf
 # On x86_64 systems only #
 $ sudo apt-get install libc6:i386 libstdc++6:i386 libz1:i386
 ```
 
-2. Define the FVP environment in `run/env.sh`. Here is mine:
+2. Clone and build the demo:
+```sh
+$ git clone https://github.com/jforissier/secvid_proto.git
+$ cd secvid_proto
+$ git submodule update --init
+$ make
+```
+
+3. Define the FVP environment in `run/env.sh`. Here is mine:
 ```sh
 export ARMLMD_LICENSE_FILE=8224@127.0.0.1
 export PATH=~/FVP_Base_AEMv8A-AEMv8A/models/Linux64_GCC-4.1:$PATH
 #FVP_CMD=FVP_Base_AEMv8A-AEMv8A
 ```
 
-3. Clone, build and run the demo
+4. Run the demo:
 ```sh
-$ git clone https://github.com/jforissier/secvid_proto.git
-$ cd secvid_proto
-$ git submodule update --init
-$ make
 $ ./run/run.sh
+```
+In the FVP terminal:
+```sh
+$ modprobe optee
+$ tee-supplicant&
+$ secvideo_demo
 ```
 
 ## More information

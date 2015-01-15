@@ -14,6 +14,10 @@ slink /lib/aarch64-linux-gnu/libteec.so libteec.so.1 755 0 0
 dir /data 755 0 0
 dir /data/tee 755 0 0
 
-# TAs
+# Trusted application
 dir /lib/teetz 755 0 0
+file lib/teetz/ffa39702-9ce0-47e0-a1cb4048cfdb847d.ta ${TOP}/app/ta/ffa39702-9ce0-47e0-a1cb4048cfdb847d.ta 444 0 0
+
+# Normal world application
+file /bin/secvideo_demo ${TOP}/app/host/secvideo_demo 755 0 0
 
