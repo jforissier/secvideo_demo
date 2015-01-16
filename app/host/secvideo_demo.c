@@ -26,57 +26,170 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <err.h>
+#include <assert.h>
 #include <tee_client_api.h>
 #include <secvideo_demo_ta.h>
 
+#define MIN(a,b) (((a)<(b))?(a):(b))
+
 #define PR(args...) do { printf(args); fflush(stdout); } while (0)
+
+#define CHECK_INVOKE2(res, orig, fn)					    \
+	do {								    \
+		if (res != TEEC_SUCCESS)				    \
+			errx(1, "TEEC_InvokeCommand failed with code 0x%x " \
+			     "origin 0x%x", res, orig);			    \
+		PR("OK\n");						    \
+	} while(0)
+
+#define CHECK_INVOKE(res, orig) CHECK_INVOKE2(res, orig, "TEE_InvokeCommand")
+
+#define CHECK(res, fn)							    \
+	do {								    \
+		if (res != TEEC_SUCCESS)				    \
+			errx(1, fn " failed with code 0x%x ", res);	    \
+	} while(0)
+
+
+/* Globals */
+static TEEC_Context ctx;
+static TEEC_Session sess;
+static TEEC_SharedMemory shm;
+
+
+/*
+ * Fill the screen with solid RGB color
+ * color[0:7]   red
+ * color[8:15]  green
+ * color[16:23] blue
+ * color[24-31] unused
+ */
+static void clear_screen(uint32_t color)
+{
+	TEEC_Result res;
+	TEEC_Operation op;
+	uint32_t err_origin;
+
+	memset(&op, 0, sizeof(op));
+	op.paramTypes = TEEC_PARAM_TYPES(TEEC_VALUE_INPUT, TEEC_NONE,
+					 TEEC_NONE, TEEC_NONE);
+	op.params[0].value.a = color;
+
+	PR("Invoke CLEAR_SCREEN command (color=0x%08x)... \n",
+	   op.params[0].value.a);
+	res = TEEC_InvokeCommand(&sess, TA_SECVIDEO_DEMO_CLEAR_SCREEN, &op,
+				 &err_origin);
+	CHECK_INVOKE(res, err_origin);
+}
+
+static void allocate_shm(void)
+{
+	TEEC_Result res;
+
+	shm.size = MIN(32 * 1024, TEEC_CONFIG_SHAREDMEM_MAX_SIZE);
+	shm.flags = TEEC_MEM_INPUT;
+
+	PR("Request shared memory (%zd bytes)...\n", shm.size);
+	res = TEEC_AllocateSharedMemory(&ctx, &shm);
+	CHECK(res, "TEEC_AllocateSharedMemory");
+}
+
+static void free_shm(void)
+{
+	PR("Release shared memory...\n");
+	TEEC_ReleaseSharedMemory(&shm);
+}
+
+static size_t send_image_data(void *ptr, size_t sz, size_t offset)
+{
+	TEEC_Result res;
+	TEEC_Operation op;
+	uint32_t err_origin;
+
+	assert(shm.buffer);
+
+	if (sz > shm.size)
+		return -1;
+
+	memcpy(shm.buffer, ptr, sz);
+
+	op.paramTypes = TEEC_PARAM_TYPES(TEEC_MEMREF_PARTIAL_INPUT,
+					 TEEC_VALUE_INPUT, TEEC_NONE,
+					 TEEC_NONE);
+	op.params[0].memref.parent = &shm;
+	op.params[0].memref.offset = 0;
+	op.params[0].memref.size = sz;
+	op.params[1].value.a = offset;
+
+	PR("Invoke IMAGE_DATA command...");
+	res = TEEC_InvokeCommand(&sess, TA_SECVIDEO_DEMO_IMAGE_DATA, &op,
+				 &err_origin);
+	CHECK_INVOKE(res, err_origin);
+
+	return sz;
+}
+
+static void display_image(uint8_t *buf, size_t buf_sz)
+{
+	uint8_t *p = buf;
+	size_t s, left = buf_sz;
+
+	while (left > 0) {
+		s = send_image_data(p, MIN(left, shm.size), p - buf);
+		if (s < 0)
+			break;
+		p += s;
+		left -= s;
+	}
+
+	free(buf);
+}
 
 int main(int argc, char *argv[])
 {
 	TEEC_Result res;
-	TEEC_Context ctx;
-	TEEC_Session sess;
-	TEEC_Operation op;
 	TEEC_UUID uuid = TA_SECVIDEO_DEMO_UUID;
 	uint32_t err_origin;
 
-	PR("Initialize TEE context... ");
+	PR("Initialize TEE context...\n");
 	res = TEEC_InitializeContext(NULL, &ctx);
 	if (res != TEEC_SUCCESS)
 		errx(1, "TEEC_InitializeContext failed with code 0x%x", res);
-	PR("OK\n");
 
-	PR("Open session to 'secvideo_demo' TA... ");
+	PR("Open session to 'secvideo_demo' TA...\n");
 	res = TEEC_OpenSession(&ctx, &sess, &uuid,
 			       TEEC_LOGIN_PUBLIC, NULL, NULL, &err_origin);
 	if (res != TEEC_SUCCESS)
 		errx(1, "TEEC_Opensession failed with code 0x%x origin 0x%x",
 			res, err_origin);
-	PR("OK\n");
 
-	memset(&op, 0, sizeof(op));
-	op.paramTypes = TEEC_PARAM_TYPES(TEEC_VALUE_INPUT, TEEC_NONE,
-					 TEEC_NONE, TEEC_NONE);
-	op.params[0].value.a = 0x000A0000; /* ?:B:G:R */
+	clear_screen(0x000A0000);
 
-	PR("Invoke 'clear screen' command (color=0x%08x)... ", op.params[0].value.a);
-	res = TEEC_InvokeCommand(&sess, TA_SECVIDEO_DEMO_CLEAR_SCREEN, &op,
-				 &err_origin);
-	if (res != TEEC_SUCCESS)
-		errx(1, "TEEC_InvokeCommand failed with code 0x%x origin 0x%x",
-			res, err_origin);
-	PR("OK\n");
+	allocate_shm();
 
-	PR("Press <return> to continue:");
+	{
+		uint8_t *buf;
+		size_t buf_sz = 800 * 600 * 4;
+
+		buf = malloc(buf_sz);
+		if (!buf)
+			errx(1, "malloc failed");
+		snprintf((char *)buf, buf_sz, "Hello, World!");
+
+		display_image(buf, buf_sz);
+	}
+
+	free_shm();
+
+	PR("Press <return> to exit:");
 	getchar();
 
-	PR("Close session... ");
+	PR("Close session...\n");
 	TEEC_CloseSession(&sess);
-	PR("OK\n");
-	PR("Finalize context... ");
+	PR("Finalize context...\n");
 	TEEC_FinalizeContext(&ctx);
-	PR("OK\n");
 
 	return 0;
 }

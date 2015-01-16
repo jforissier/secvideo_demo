@@ -82,6 +82,21 @@ static TEE_Result clear_screen(uint32_t param_types, TEE_Param params[4])
 	return TEE_SUCCESS;
 }
 
+static TEE_Result image_data(uint32_t param_types, TEE_Param params[4])
+{
+	uint32_t exp_param_types = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INPUT,
+						   TEE_PARAM_TYPE_VALUE_INPUT,
+						   TEE_PARAM_TYPE_NONE,
+						   TEE_PARAM_TYPE_NONE);
+
+	if (param_types != exp_param_types)
+		return TEE_ERROR_BAD_PARAMETERS;
+
+	DMSG("Image data: %zd bytes to framebuffer offset %u",
+	     params[0].memref.size, params[1].value.a);
+	return TEE_SUCCESS;
+}
+
 /*
  * Called when a TA is invoked. sess_ctx hold that value that was
  * assigned by TA_OpenSessionEntryPoint(). The rest of the paramters
@@ -95,6 +110,8 @@ TEE_Result TA_InvokeCommandEntryPoint(void *sess_ctx, uint32_t cmd_id,
 	switch (cmd_id) {
 	case TA_SECVIDEO_DEMO_CLEAR_SCREEN:
 		return clear_screen(param_types, params);
+	case TA_SECVIDEO_DEMO_IMAGE_DATA:
+		return image_data(param_types, params);
 	default:
 		return TEE_ERROR_BAD_PARAMETERS;
 	}

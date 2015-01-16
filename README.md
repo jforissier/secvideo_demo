@@ -11,7 +11,8 @@ details.
 
 ## TL;DR
 
-1. Install the required compilers, tools and libraries:
+1. Install the required compilers, tools and libraries (I am using Ubuntu 14.04
+x86_64 as my development system):
 ```sh
 $ sudo apt-get install uuid-dev gcc-arm-linux-gnueabihf
 # On x86_64 systems only #

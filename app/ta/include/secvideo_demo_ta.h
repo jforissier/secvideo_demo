@@ -32,7 +32,16 @@
 
 /* The commands implemented in this TA */
 enum {
+	/*
+	 * Fill the framebuffer with a solid color
+	 * params[0].value.a = B:G:R color */
 	TA_SECVIDEO_DEMO_CLEAR_SCREEN = 0,
+	/*
+	 * Update a framebuffer area
+	 * params[0].memref points to shared memory containing image data
+	 * params[1].value.a is the offset into the target framebuffer
+	 */
+	TA_SECVIDEO_DEMO_IMAGE_DATA,
 };
 
 #endif /* SECVIDEO_DEMO_TA_H */
