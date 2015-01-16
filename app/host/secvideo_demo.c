@@ -143,6 +143,44 @@ static void display_image(uint8_t *buf, size_t buf_sz)
 		p += s;
 		left -= s;
 	}
+}
+
+static void display_file(const char *name)
+{
+	FILE *f;
+	long file_sz;
+	uint8_t *buf;
+	size_t buf_sz = 800 * 600 * 4;
+	size_t rd;
+
+	buf = malloc(buf_sz);
+	if (!buf)
+		errx(1, "malloc failed");
+
+	PR("Open file '%s'\n", name);
+
+	f = fopen(name, "r");
+	if (!f) {
+		perror("fopen");
+		return;
+	}
+
+	fseek(f, 0, SEEK_END);
+	file_sz = ftell(f);
+	if (file_sz != buf_sz) {
+		PR("Warning: file_sz != buf_sz (%lu != %zd)\n", file_sz,
+		   buf_sz);
+		buf_sz = MIN(buf_sz, file_sz);
+	}
+	rewind(f);
+	rd = fread(buf, buf_sz, 1, f);
+	if (rd != buf_sz) {
+		PR("Warning incomplete read\n");
+	}
+
+	fclose(f);
+
+	display_image(buf, buf_sz);
 
 	free(buf);
 }
@@ -152,6 +190,7 @@ int main(int argc, char *argv[])
 	TEEC_Result res;
 	TEEC_UUID uuid = TA_SECVIDEO_DEMO_UUID;
 	uint32_t err_origin;
+	int i;
 
 	PR("Initialize TEE context...\n");
 	res = TEEC_InitializeContext(NULL, &ctx);
@@ -169,17 +208,8 @@ int main(int argc, char *argv[])
 
 	allocate_shm();
 
-	{
-		uint8_t *buf;
-		size_t buf_sz = 800 * 600 * 4;
-
-		buf = malloc(buf_sz);
-		if (!buf)
-			errx(1, "malloc failed");
-		snprintf((char *)buf, buf_sz, "Hello, World!");
-
-		display_image(buf, buf_sz);
-	}
+	for (i = 1; i < argc; i++)
+		display_file(argv[i]);
 
 	free_shm();
 

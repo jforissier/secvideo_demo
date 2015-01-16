@@ -164,6 +164,7 @@ distclean: cleaner
 	$(Q)rm -f downloads/$(BUSYBOX_TARBALL)
 	$(Q)rm -f downloads/$(AARCH64_GCC_TARBALL)
 	$(Q)rm -f downloads/$(AARCH64_NONE_GCC_DIR)
+	$(MAKE) -C app distclean
 
 
 #

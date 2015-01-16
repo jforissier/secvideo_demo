@@ -21,3 +21,5 @@ file lib/teetz/ffa39702-9ce0-47e0-a1cb4048cfdb847d.ta ${TOP}/app/ta/ffa39702-9ce
 # Normal world application
 file /bin/secvideo_demo ${TOP}/app/host/secvideo_demo 755 0 0
 
+# Test files
+file /linaro-logo-web.rgba ${TOP}/app/host/linaro-logo-web.rgba 444 0 0

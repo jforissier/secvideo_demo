@@ -16,3 +16,5 @@ clean-host:
 clean-ta:
 	$(MAKE) -C ta clean
 
+distclean:
+	$(MAKE) -C host distclean
