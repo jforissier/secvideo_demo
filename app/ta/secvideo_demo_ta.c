@@ -94,7 +94,10 @@ static TEE_Result image_data(uint32_t param_types, TEE_Param params[4])
 
 	DMSG("Image data: %zd bytes to framebuffer offset %u",
 	     params[0].memref.size, params[1].value.a);
-	return TEE_SUCCESS;
+
+	return TEEExt_UpdateFrameBuffer(params[0].memref.buffer,
+					params[0].memref.size,
+					params[1].value.a);
 }
 
 /*

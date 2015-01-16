@@ -151,7 +151,6 @@ static void display_file(const char *name)
 	long file_sz;
 	uint8_t *buf;
 	size_t buf_sz = 800 * 600 * 4;
-	size_t rd;
 
 	buf = malloc(buf_sz);
 	if (!buf)
@@ -164,7 +163,6 @@ static void display_file(const char *name)
 		perror("fopen");
 		return;
 	}
-
 	fseek(f, 0, SEEK_END);
 	file_sz = ftell(f);
 	if (file_sz != buf_sz) {
@@ -173,11 +171,10 @@ static void display_file(const char *name)
 		buf_sz = MIN(buf_sz, file_sz);
 	}
 	rewind(f);
-	rd = fread(buf, buf_sz, 1, f);
-	if (rd != buf_sz) {
-		PR("Warning incomplete read\n");
+	if (fread(buf, buf_sz, 1, f) != 1) {
+		perror("fread");
+		buf_sz = 0;
 	}
-
 	fclose(f);
 
 	display_image(buf, buf_sz);
@@ -212,9 +209,6 @@ int main(int argc, char *argv[])
 		display_file(argv[i]);
 
 	free_shm();
-
-	PR("Press <return> to exit:");
-	getchar();
 
 	PR("Close session...\n");
 	TEEC_CloseSession(&sess);
