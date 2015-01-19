@@ -23,3 +23,4 @@ file /bin/secvideo_demo ${TOP}/app/host/secvideo_demo 755 0 0
 
 # Test files
 file /linaro-logo-web.rgba ${TOP}/app/host/linaro-logo-web.rgba 444 0 0
+file /linaro-logo-web.rgba.aes ${TOP}/app/host/linaro-logo-web.rgba.aes 444 0 0

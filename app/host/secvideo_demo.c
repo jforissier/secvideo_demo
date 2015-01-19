@@ -102,7 +102,7 @@ static void free_shm(void)
 	TEEC_ReleaseSharedMemory(&shm);
 }
 
-static size_t send_image_data(void *ptr, size_t sz, size_t offset)
+static size_t send_image_data(void *ptr, size_t sz, size_t offset, int crypt)
 {
 	TEEC_Result res;
 	TEEC_Operation op;
@@ -122,8 +122,9 @@ static size_t send_image_data(void *ptr, size_t sz, size_t offset)
 	op.params[0].memref.offset = 0;
 	op.params[0].memref.size = sz;
 	op.params[1].value.a = offset;
+	op.params[1].value.b = crypt;
 
-	PR("Invoke IMAGE_DATA command...");
+	PR("Invoke IMAGE_DATA command (crypt=%s)... ", (crypt ? "yes" : "no"));
 	res = TEEC_InvokeCommand(&sess, TA_SECVIDEO_DEMO_IMAGE_DATA, &op,
 				 &err_origin);
 	CHECK_INVOKE(res, err_origin);
@@ -131,13 +132,13 @@ static size_t send_image_data(void *ptr, size_t sz, size_t offset)
 	return sz;
 }
 
-static void display_image(uint8_t *buf, size_t buf_sz)
+static void display_image(uint8_t *buf, size_t buf_sz, int crypt)
 {
 	uint8_t *p = buf;
 	size_t s, left = buf_sz;
 
 	while (left > 0) {
-		s = send_image_data(p, MIN(left, shm.size), p - buf);
+		s = send_image_data(p, MIN(left, shm.size), p - buf, crypt);
 		if (s < 0)
 			break;
 		p += s;
@@ -151,6 +152,7 @@ static void display_file(const char *name)
 	long file_sz;
 	uint8_t *buf;
 	size_t buf_sz = 800 * 600 * 4;
+	int crypt;
 
 	buf = malloc(buf_sz);
 	if (!buf)
@@ -177,7 +179,9 @@ static void display_file(const char *name)
 	}
 	fclose(f);
 
-	display_image(buf, buf_sz);
+	crypt = (strlen(name) > 4 &&
+		 !strncmp(name + strlen(name) - 4, ".aes", 4));
+	display_image(buf, buf_sz, crypt);
 
 	free(buf);
 }

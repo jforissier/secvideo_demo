@@ -8,7 +8,7 @@ LDLIBS = -L$(TEEC_EXPORT)/lib -lteec
 
 .PHONY: all clean
 
-all: secvideo_demo linaro-logo-web.rgba
+all: secvideo_demo linaro-logo-web.rgba linaro-logo-web.rgba.aes
 
 linaro-logo-web.png:
 	curl https://www.linaro.org/app/images/linaro-logo-web.png -o $@
@@ -16,8 +16,11 @@ linaro-logo-web.png:
 linaro-logo-web.rgba: linaro-logo-web.png
 	convert $< -gravity Center -background white -extent 800x600 $@
 
+linaro-logo-web.rgba.aes: linaro-logo-web.rgba
+	openssl aes-128-ecb -nopad -nosalt -K 000102030405060708090A0B0C0D0E0F -in $< -out $@
+
 clean:
-	rm -f secvideo_demo linaro-logo-web.rgba
+	rm -f secvideo_demo linaro-logo-web.rgba linaro-logo-web.rgba.aes
 
 distclean: clean
 	rm -f linaro-logo-web.png
