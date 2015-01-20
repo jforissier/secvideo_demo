@@ -108,13 +108,6 @@ static size_t send_image_data(void *ptr, size_t sz, size_t offset, int crypt)
 	TEEC_Operation op;
 	uint32_t err_origin;
 
-	assert(shm.buffer);
-
-	if (sz > shm.size)
-		return -1;
-
-	memcpy(shm.buffer, ptr, sz);
-
 	op.paramTypes = TEEC_PARAM_TYPES(TEEC_MEMREF_PARTIAL_INPUT,
 					 TEEC_VALUE_INPUT, TEEC_NONE,
 					 TEEC_NONE);
@@ -132,31 +125,12 @@ static size_t send_image_data(void *ptr, size_t sz, size_t offset, int crypt)
 	return sz;
 }
 
-static void display_image(uint8_t *buf, size_t buf_sz, int crypt)
-{
-	uint8_t *p = buf;
-	size_t s, left = buf_sz;
-
-	while (left > 0) {
-		s = send_image_data(p, MIN(left, shm.size), p - buf, crypt);
-		if (s < 0)
-			break;
-		p += s;
-		left -= s;
-	}
-}
-
 static void display_file(const char *name)
 {
 	FILE *f;
 	long file_sz;
-	uint8_t *buf;
-	size_t buf_sz = 800 * 600 * 4;
+	size_t sz, left, offset = 0;
 	int crypt;
-
-	buf = malloc(buf_sz);
-	if (!buf)
-		errx(1, "malloc failed");
 
 	PR("Open file '%s'\n", name);
 
@@ -167,23 +141,20 @@ static void display_file(const char *name)
 	}
 	fseek(f, 0, SEEK_END);
 	file_sz = ftell(f);
-	if (file_sz != buf_sz) {
-		PR("Warning: file_sz != buf_sz (%lu != %zd)\n", file_sz,
-		   buf_sz);
-		buf_sz = MIN(buf_sz, file_sz);
-	}
 	rewind(f);
-	if (fread(buf, buf_sz, 1, f) != 1) {
-		perror("fread");
-		buf_sz = 0;
-	}
-	fclose(f);
 
 	crypt = (strlen(name) > 4 &&
 		 !strncmp(name + strlen(name) - 4, ".aes", 4));
-	display_image(buf, buf_sz, crypt);
 
-	free(buf);
+	for (left = file_sz; left > 0; ) {
+		sz = fread(shm.buffer, 1, shm.size, f);
+		if (sz > 0) {
+			send_image_data(shm.buffer, sz, offset, crypt);
+			left -= sz;
+			offset += sz;
+		}
+	} while (left > 0);
+	fclose(f);
 }
 
 int main(int argc, char *argv[])
