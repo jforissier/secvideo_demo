@@ -5,7 +5,8 @@ TA_CROSS_COMPILE ?= arm-linux-gnueabihf-
 CROSS_COMPILE ?= $(TA_CROSS_COMPILE)
 
 BINARY = ffa39702-9ce0-47e0-a1cb4048cfdb847d
-include $(TA_DEV_KIT_DIR)/mk/ta_dev_kit.mk
+# Do not fail if TA_DEV_KIT_DIR does not exist (make clean)
+-include $(TA_DEV_KIT_DIR)/mk/ta_dev_kit.mk
 
 CPPFLAGS += -Iinclude
 

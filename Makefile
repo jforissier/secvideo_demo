@@ -76,6 +76,10 @@ else
   ECHO := @echo
 endif
 
+.PHONY: _all
+_all:
+	$(Q)$(MAKE) all $(filter-out _all,$(MAKECMDGOALS))
+
 all: build-linux build-arm-tf build-rootfs build-dtb
 
 #
@@ -145,7 +149,7 @@ downloads/$(AARCH64_NONE_GCC_TARBALL):
 # Clean rules
 #
 
-clean: clean-linux clean-optee-os clean-optee-client clean-optee-linuxdriver clean-uefi clean-arm-tf clean-rootfs
+clean: clean-linux clean-optee-os clean-optee-client clean-optee-linuxdriver clean-uefi clean-arm-tf clean-rootfs clean-app
 	$(ECHO) '  CLEAN   .'
 
 cleaner: clean
@@ -403,7 +407,7 @@ run/filesystem.cpio.gz: gen_rootfs/filelist-tee.txt linux/usr/gen_init_cpio $(op
 gen_rootfs/filelist-tee.txt: gen_rootfs/filelist-final.txt tee-files.txt
 	$(ECHO) '  GEN    $@'
 	$(Q)cat gen_rootfs/filelist-final.txt | sed '/fbtest/d' >$@
-	$(Q)export KERNEL_VERSION=`cd linux ; $(MAKE) -s kernelversion` ;\
+	$(Q)export KERNEL_VERSION=`cd linux ; $(MAKE) --no-print-directory -s kernelversion` ;\
 	    export TOP=$(PWD) ; \
 	    $(expand-env-var) <tee-files.txt >>$@
 
