@@ -8,6 +8,7 @@
 
 #include <tee_internal_api.h>
 #include <tee_internal_api_extensions.h>
+#include <string.h>
 
 #include <secvideo_demo_ta.h>
 
@@ -95,18 +96,20 @@ static TEE_Result clear_screen(uint32_t param_types, TEE_Param params[4])
 	if (param_types != exp_param_types)
 		return TEE_ERROR_BAD_PARAMETERS;
 
+	/* Crash */
+	/* memset((void *)0xff000000, 0, 1024);*/
+
 	DMSG("Clear screen request, color: 0x%08x", params[0].value.a);
 	return TEE_SUCCESS;
 }
 
-static TEE_Result decrypt(void *inout, size_t sz, uint32_t keynum)
+static TEE_Result decrypt(void *inout, size_t sz)
 {
 	TEE_Result res;
 	TEE_ObjectHandle hkey;
 	TEE_Attribute attr;
 	size_t outsz;
 
-	(void)keynum;
 	(void)inout;
 	(void)sz;
 
@@ -149,6 +152,9 @@ static TEE_Result decrypt(void *inout, size_t sz, uint32_t keynum)
 static TEE_Result image_data(uint32_t param_types, TEE_Param params[4])
 {
 	TEE_Result res;
+	void *buf;
+	size_t sz, offset;
+	uint32_t flags;
 	uint32_t exp_param_types = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INPUT,
 						   TEE_PARAM_TYPE_VALUE_INPUT,
 						   TEE_PARAM_TYPE_NONE,
@@ -157,20 +163,21 @@ static TEE_Result image_data(uint32_t param_types, TEE_Param params[4])
 	if (param_types != exp_param_types)
 		return TEE_ERROR_BAD_PARAMETERS;
 
-	DMSG("Image data: %zd bytes to framebuffer offset %u (encrypted: %s)",
-	     params[0].memref.size, params[1].value.a,
-	     params[1].value.b ? "yes" : "no");
+	buf = params[0].memref.buffer;
+	sz = params[0].memref.size;
+	offset = params[1].value.a;
+	flags = params[1].value.b;
 
-	if (params[1].value.b) {
-		res = decrypt(params[0].memref.buffer, params[0].memref.size,
-				params[1].value.b);
+	DMSG("Image data: %zd bytes to framebuffer offset %u (flags: 0x%04x)",
+	     sz, offset, flags);
+
+	if (flags & IMAGE_ENCRYPTED) {
+		res = decrypt(buf, sz);
 		if (res != TEE_SUCCESS)
 			return res;
 	}
 
-	return TEEExt_UpdateFrameBuffer(params[0].memref.buffer,
-					params[0].memref.size,
-					params[1].value.a);
+	return TEEExt_UpdateFrameBuffer(buf, sz, offset);
 }
 
 /*

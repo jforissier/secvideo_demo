@@ -40,10 +40,14 @@ enum {
 	 * Update a framebuffer area
 	 * - params[0].memref points to shared memory containing image data
 	 * - params[1].value.a is the offset into the target framebuffer
-	 * - params[1].value.b is the crypto key to use for decryption
-	 *   (0: no encryption)
+	 * - params[1].value.b contains flags (IMAGE_START, etc.)
 	 */
 	TA_SECVIDEO_DEMO_IMAGE_DATA,
 };
+
+/* Image data flags */
+#define IMAGE_START	1
+#define IMAGE_END	2
+#define IMAGE_ENCRYPTED	4
 
 #endif /* SECVIDEO_DEMO_TA_H */

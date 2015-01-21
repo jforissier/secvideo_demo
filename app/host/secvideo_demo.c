@@ -58,6 +58,20 @@ static TEEC_Context ctx;
 static TEEC_Session sess;
 static TEEC_SharedMemory shm;
 
+#define FP(args...) do { fprintf(stderr, args); } while(0)
+
+static void usage()
+{
+	FP("Usage: secvideo_demo [-c|<file>] ...\n");
+	FP("       secvideo_demo -h\n");
+	FP(" -c       Clear the FVP LCD screen.\n");
+	FP(" <file>   Display file (800x600 32-bit RGBA, A is ignored).\n");
+	FP("          If extension is .aes, the file is assumed to be "
+				"encrypted with 128-bit\n");
+	FP("          AES-ECB, no IV, no padding, "
+				"key: 0x0102030405060708090A0B0C0D0E0F.\n");
+	FP(" -h       This help.\n");
+}
 
 /*
  * Fill the screen with solid RGB color
@@ -102,7 +116,7 @@ static void free_shm(void)
 	TEEC_ReleaseSharedMemory(&shm);
 }
 
-static size_t send_image_data(void *ptr, size_t sz, size_t offset, int crypt)
+static size_t send_image_data(void *ptr, size_t sz, size_t offset, int flags)
 {
 	TEEC_Result res;
 	TEEC_Operation op;
@@ -115,9 +129,9 @@ static size_t send_image_data(void *ptr, size_t sz, size_t offset, int crypt)
 	op.params[0].memref.offset = 0;
 	op.params[0].memref.size = sz;
 	op.params[1].value.a = offset;
-	op.params[1].value.b = crypt;
+	op.params[1].value.b = flags;
 
-	PR("Invoke IMAGE_DATA command (crypt=%s)... ", (crypt ? "yes" : "no"));
+	PR("Invoke IMAGE_DATA command (flags=0x%04x)... ", flags);
 	res = TEEC_InvokeCommand(&sess, TA_SECVIDEO_DEMO_IMAGE_DATA, &op,
 				 &err_origin);
 	CHECK_INVOKE(res, err_origin);
@@ -130,7 +144,7 @@ static void display_file(const char *name)
 	FILE *f;
 	long file_sz;
 	size_t sz, left, offset = 0;
-	int crypt;
+	int crypt, flags;
 
 	PR("Open file '%s'\n", name);
 
@@ -149,7 +163,14 @@ static void display_file(const char *name)
 	for (left = file_sz; left > 0; ) {
 		sz = fread(shm.buffer, 1, shm.size, f);
 		if (sz > 0) {
-			send_image_data(shm.buffer, sz, offset, crypt);
+			flags = 0;
+			if (crypt)
+				flags |= IMAGE_ENCRYPTED;
+			if (left == file_sz)
+				flags |= IMAGE_START;
+			if (left <= sz)
+				flags |= IMAGE_END;
+			send_image_data(shm.buffer, sz, offset, flags);
 			left -= sz;
 			offset += sz;
 		}
@@ -163,6 +184,18 @@ int main(int argc, char *argv[])
 	TEEC_UUID uuid = TA_SECVIDEO_DEMO_UUID;
 	uint32_t err_origin;
 	int i;
+
+	/* Show help? */
+	if (argc == 1) {
+		usage();
+		return 0;
+	}
+	for (i = 1; i < argc; i++) {
+		if (!strcmp(argv[i], "-h")) {
+			usage();
+			return 0;
+		}
+	}
 
 	PR("Initialize TEE context...\n");
 	res = TEEC_InitializeContext(NULL, &ctx);
@@ -180,8 +213,13 @@ int main(int argc, char *argv[])
 
 	allocate_shm();
 
-	for (i = 1; i < argc; i++)
-		display_file(argv[i]);
+	for (i = 1; i < argc; i++) {
+		if (!strcmp(argv[i], "-c")) {
+			clear_screen(0x000A0000);
+		} else {
+			display_file(argv[i]);
+		}
+	}
 
 	free_shm();
 
