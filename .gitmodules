@@ -9,7 +9,7 @@
 	url = https://github.com/OP-TEE/optee_client.git
 [submodule "optee_linuxdriver"]
 	path = optee_linuxdriver
-	url = https://github.com/OP-TEE/optee_linuxdriver.git
+	url = https://github.com/jforissier/optee_linuxdriver.git
 [submodule "gen_rootfs"]
 	path = gen_rootfs
 	url = https://github.com/jforissier/gen_rootfs.git
