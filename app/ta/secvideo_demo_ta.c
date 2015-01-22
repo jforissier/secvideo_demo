@@ -14,6 +14,8 @@
 
 #define STR_TRACE_USER_TA "SECVIDEO_DEMO"
 
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
 #define CHECK(res, name, action) do { \
 		if ((res) != TEE_SUCCESS) { \
 			DMSG(name ": 0x%08x", (res)); \
@@ -28,12 +30,25 @@ static uint8_t aes_key[] =
 
 static TEE_OperationHandle crypto_op = NULL;
 
+/* Secure buffer to decrypt image data */
+static struct {
+	void * buf;
+	size_t sz;
+} imgbuf;
+
 /*
  * Called when the instance of the TA is created. This is the first call in
  * the TA.
  */
 TEE_Result TA_CreateEntryPoint(void)
 {
+	size_t sz = 16 * 1024;
+
+	imgbuf.buf = TEE_Malloc(sz, 0);
+	if (!imgbuf.buf)
+		return TEE_ERROR_OUT_OF_MEMORY;
+	imgbuf.sz = sz;
+
 	return TEE_SUCCESS;
 }
 
@@ -103,15 +118,12 @@ static TEE_Result clear_screen(uint32_t param_types, TEE_Param params[4])
 	return TEE_SUCCESS;
 }
 
-static TEE_Result decrypt(void *inout, size_t sz)
+/* Decrypt into secure buffer: imgbuf.buf */
+static TEE_Result decrypt(void *in, size_t sz, size_t *outsz)
 {
 	TEE_Result res;
 	TEE_ObjectHandle hkey;
 	TEE_Attribute attr;
-	size_t outsz;
-
-	(void)inout;
-	(void)sz;
 
 	if (!crypto_op) {
 		DMSG("TEE_AllocateOperation");
@@ -142,8 +154,8 @@ static TEE_Result decrypt(void *inout, size_t sz)
 	TEE_CipherInit(crypto_op, NULL, 0);
 
 	DMSG("TEE_CipherDoFinal");
-	outsz = sz;
-	res = TEE_CipherDoFinal(crypto_op, inout, sz, inout, &outsz);
+	*outsz = MIN(sz, imgbuf.sz);
+	res = TEE_CipherDoFinal(crypto_op, in, *outsz, imgbuf.buf, outsz);
 	CHECK(res, "TEE_CipherDoFinal", return res;);
 
 	return TEE_SUCCESS;
@@ -153,7 +165,7 @@ static TEE_Result image_data(uint32_t param_types, TEE_Param params[4])
 {
 	TEE_Result res;
 	void *buf;
-	size_t sz, offset;
+	size_t sz, offset, dsz;
 	uint32_t flags;
 	uint32_t exp_param_types = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INPUT,
 						   TEE_PARAM_TYPE_VALUE_INPUT,
@@ -172,12 +184,22 @@ static TEE_Result image_data(uint32_t param_types, TEE_Param params[4])
 	     sz, offset, flags);
 
 	if (flags & IMAGE_ENCRYPTED) {
-		res = decrypt(buf, sz);
-		if (res != TEE_SUCCESS)
-			return res;
+		while (sz > 0) {
+			res = decrypt(buf, sz, &dsz);
+			if (res != TEE_SUCCESS)
+				return res;
+			res = TEEExt_UpdateFrameBuffer(imgbuf.buf, dsz,
+						       offset);
+			if (res != TEE_SUCCESS)
+				return res;
+			sz -= dsz;
+			offset += dsz;
+			buf = (uint8_t *)buf + dsz;
+		}
+		return TEE_SUCCESS;
+	} else {
+		return TEEExt_UpdateFrameBuffer(buf, sz, offset);
 	}
-
-	return TEEExt_UpdateFrameBuffer(buf, sz, offset);
 }
 
 /*
