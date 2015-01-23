@@ -41,7 +41,6 @@
 		if (res != TEEC_SUCCESS)				    \
 			errx(1, "TEEC_InvokeCommand failed with code 0x%x " \
 			     "origin 0x%x", res, orig);			    \
-		PR("OK\n");						    \
 	} while(0)
 
 #define CHECK_INVOKE(res, orig) CHECK_INVOKE2(res, orig, "TEE_InvokeCommand")
@@ -131,7 +130,6 @@ static size_t send_image_data(void *ptr, size_t sz, size_t offset, int flags)
 	op.params[1].value.a = offset;
 	op.params[1].value.b = flags;
 
-	PR("Invoke IMAGE_DATA command (flags=0x%04x)... ", flags);
 	res = TEEC_InvokeCommand(&sess, TA_SECVIDEO_DEMO_IMAGE_DATA, &op,
 				 &err_origin);
 	CHECK_INVOKE(res, err_origin);
@@ -160,6 +158,7 @@ static void display_file(const char *name)
 	crypt = (strlen(name) > 4 &&
 		 !strncmp(name + strlen(name) - 4, ".aes", 4));
 
+	PR("Send image data to trusted app... ");
 	for (left = file_sz; left > 0; ) {
 		sz = fread(shm.buffer, 1, shm.size, f);
 		if (sz > 0) {

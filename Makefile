@@ -207,7 +207,7 @@ build-optee-os optee_os/out/arm32-plat-vexpress/core/tee.bin:
 	    -j$(_NPROCESSORS_ONLN) \
 	    CROSS_COMPILE="$(CCACHE)arm-linux-gnueabihf-" \
 	    PLATFORM=vexpress-fvp \
-	    CFG_TEE_CORE_LOG_LEVEL=4
+	    CFG_TEE_CORE_LOG_LEVEL=3
 
 clean-optee-os:
 	$(ECHO) '  CLEAN   optee_os'
@@ -215,7 +215,6 @@ clean-optee-os:
 	    -j$(_NPROCESSORS_ONLN) \
 	    CROSS_COMPILE="$(CCACHE)arm-linux-gnueabihf-" \
 	    PLATFORM=vexpress-fvp \
-	    CFG_TEE_CORE_LOG_LEVEL=4 \
 	    clean
 
 #
