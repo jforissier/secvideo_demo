@@ -103,6 +103,8 @@ void TA_CloseSessionEntryPoint(void *sess_ctx)
 
 static TEE_Result clear_screen(uint32_t param_types, TEE_Param params[4])
 {
+	TEE_Result res;
+	size_t out_sz, offset = 0;
 	uint32_t exp_param_types = TEE_PARAM_TYPES(TEE_PARAM_TYPE_VALUE_INPUT,
 						   TEE_PARAM_TYPE_NONE,
 						   TEE_PARAM_TYPE_NONE,
@@ -111,10 +113,15 @@ static TEE_Result clear_screen(uint32_t param_types, TEE_Param params[4])
 	if (param_types != exp_param_types)
 		return TEE_ERROR_BAD_PARAMETERS;
 
-	/* Crash */
-	/* memset((void *)0xff000000, 0, 1024);*/
-
 	DMSG("Clear screen request, color: 0x%08x", params[0].value.a);
+
+	memset(imgbuf.buf, params[0].value.a, imgbuf.sz);
+	do {
+		res = TEEExt_UpdateFrameBuffer(imgbuf.buf, imgbuf.sz,
+					       offset, &out_sz);
+		offset += out_sz;
+	} while (res == TEE_SUCCESS && out_sz != 0);
+
 	return TEE_SUCCESS;
 }
 
@@ -189,7 +196,7 @@ static TEE_Result image_data(uint32_t param_types, TEE_Param params[4])
 			if (res != TEE_SUCCESS)
 				return res;
 			res = TEEExt_UpdateFrameBuffer(imgbuf.buf, dsz,
-						       offset);
+						       offset, NULL);
 			if (res != TEE_SUCCESS)
 				return res;
 			sz -= dsz;
@@ -198,7 +205,7 @@ static TEE_Result image_data(uint32_t param_types, TEE_Param params[4])
 		}
 		return TEE_SUCCESS;
 	} else {
-		return TEEExt_UpdateFrameBuffer(buf, sz, offset);
+		return TEEExt_UpdateFrameBuffer(buf, sz, offset, NULL);
 	}
 }
 
