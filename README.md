@@ -21,8 +21,8 @@ $ sudo apt-get install libc6:i386 libstdc++6:i386 libz1:i386
 
 2. Clone and build the demo:
 ```sh
-$ git clone https://github.com/jforissier/secvid_proto.git
-$ cd secvid_proto
+$ git clone https://github.com/jforissier/secvid_demo.git
+$ cd secvid_demo
 $ git submodule update --init
 $ make
 ```
@@ -42,7 +42,7 @@ In the FVP terminal:
 ```sh
 $ modprobe optee
 $ tee-supplicant&
-$ secvideo_demo
+$ secvideo_demo -h
 ```
 
 ## More information
@@ -80,11 +80,18 @@ The demo performs the following tasks:
 
 The project has the following directories:
 
+  - app
+    - app/host: Main Linux application, `secvideo_demo`
+    - app/ta: Trusted side of the application
   - arm-trusted-firmware
-  - edk2
-  - linux
-  - optee_os
-  - optee_client
-  - optee_linuxdriver
-  - ...
+  - downloads: Temporary files downloaded when project is built for the first
+  time (Linux sources, BusyBox sources, compilers, etc.)
+  - edk2: UEFI bootloader
+  - gen_rootfs: Utilities to build a minimal root filesystem for Linux, based on BusyBox
+  - linux: The Linux kernel
+  - optee_client: OP-TEE client library
+  - optee_linuxdriver: OP-TEE linux driver and `tee-supplicant` daemon
+  - optee_os: OP-TEE
+  - run: Contains a script to launch the simulation
+  - toolchains: GCC cross-compilers for AArch64
 
