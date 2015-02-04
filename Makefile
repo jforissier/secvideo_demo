@@ -367,11 +367,11 @@ endif
 
 .PHONY: build-rootfs
 build-rootfs:: build-filelist $(rootfs-other-projects-deps)
-build-rootfs:: run/filesystem.cpio.gz
+build-rootfs:: rootfs-cpio
 
-run/filesystem.cpio.gz: gen_rootfs/filelist-tee.txt linux/usr/gen_init_cpio $(optee-client-files)
-	$(ECHO) "  GEN    $@"
-	$(Q)(cd gen_rootfs && gen_init_cpio filelist-tee.txt) | gzip >$@
+rootfs-cpio run/filesystem.cpio.gz: gen_rootfs/filelist-tee.txt linux/usr/gen_init_cpio $(optee-client-files)
+	$(ECHO) "  GEN    run/filesystem.cpio.gz"
+	$(Q)(cd gen_rootfs && gen_init_cpio filelist-tee.txt) | gzip >run/filesystem.cpio.gz
 
 gen_rootfs/filelist-tee.txt: gen_rootfs/filelist-final.txt tee-files.txt
 	$(ECHO) '  GEN    $@'

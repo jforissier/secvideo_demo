@@ -56,14 +56,20 @@
 /* Globals */
 static TEEC_Context ctx;
 static TEEC_Session sess;
-static TEEC_SharedMemory shm;
+static TEEC_SharedMemory shm = {
+	.size =  512 * 1024,
+	.flags = TEEC_MEM_INPUT,
+};
 
 #define FP(args...) do { fprintf(stderr, args); } while(0)
 
 static void usage()
 {
-	FP("Usage: secvideo_demo [-c|<file>] ...\n");
+	FP("Usage: secvideo_demo [-s <size>] [-c|<file>] ...\n");
 	FP("       secvideo_demo -h\n");
+	FP(" -b       Size of the non-secure buffer "
+				"(TEEC_AllocateSharedMemory()) [%zd].\n",
+				shm.size);
 	FP(" -c       Clear the FVP LCD screen.\n");
 	FP(" <file>   Display file (800x600 32-bit RGBA, A is ignored).\n");
 	FP("          If extension is .aes, the file is assumed to be "
@@ -102,9 +108,6 @@ static void allocate_shm(void)
 {
 	TEEC_Result res;
 
-	shm.size = MIN(32 * 1024, TEEC_CONFIG_SHAREDMEM_MAX_SIZE);
-	shm.flags = TEEC_MEM_INPUT;
-
 	PR("Request shared memory (%zd bytes)...\n", shm.size);
 	res = TEEC_AllocateSharedMemory(&ctx, &shm);
 	CHECK(res, "TEEC_AllocateSharedMemory");
@@ -116,7 +119,7 @@ static void free_shm(void)
 	TEEC_ReleaseSharedMemory(&shm);
 }
 
-static size_t send_image_data(void *ptr, size_t sz, size_t offset, int flags)
+static size_t send_image_data(size_t sz, size_t offset, int flags)
 {
 	TEEC_Result res;
 	TEEC_Operation op;
@@ -145,6 +148,9 @@ static void display_file(const char *name)
 	size_t sz, left, offset = 0;
 	int crypt, flags;
 
+	if (!shm.buffer)
+		allocate_shm();
+
 	PR("Open file '%s'\n", name);
 
 	f = fopen(name, "r");
@@ -170,7 +176,7 @@ static void display_file(const char *name)
 				flags |= IMAGE_START;
 			if (left <= sz)
 				flags |= IMAGE_END;
-			send_image_data(shm.buffer, sz, offset, flags);
+			send_image_data(sz, offset, flags);
 			left -= sz;
 			offset += sz;
 		}
@@ -209,13 +215,13 @@ int main(int argc, char *argv[])
 		errx(1, "TEEC_Opensession failed with code 0x%x origin 0x%x",
 			res, err_origin);
 
-	clear_screen(0x000A0000);
-
-	allocate_shm();
-
 	for (i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "-c")) {
 			clear_screen(0x000A0000);
+		} else if (!strcmp(argv[i], "-b")) {
+			++i;
+			shm.size = strtol(argv[i], NULL, 0);
+			PR("Non-secure buffer size: %zd bytes\n", shm.size);
 		} else {
 			display_file(argv[i]);
 		}
