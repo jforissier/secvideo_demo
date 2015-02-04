@@ -28,10 +28,6 @@
 
 filename = $(lastword $(subst /, ,$(1)))
 
-LINUX_URL = https://www.kernel.org/pub/linux/kernel/v3.x/linux-3.18.tar.xz
-LINUX_TARBALL = $(call filename,$(LINUX_URL))
-LINUX_DIR = $(LINUX_TARBALL:.tar.xz=)
-
 EDK2_URL = https://github.com/tianocore/edk2/archive/8c83d0c0b9bd102cd905c83b2644a543e9711815.tar.gz
 EDK2_TARBALL = $(call filename,$(EDK2_URL))
 EDK2_DIR = edk2-$(EDK2_TARBALL:.tar.gz=)
@@ -86,19 +82,6 @@ all: build-linux build-arm-tf build-rootfs build-dtb
 # Download rules
 #
 
-.linux: downloads/$(LINUX_TARBALL)
-	$(ECHO) '  TAR     linux'
-	$(Q)rm -rf $(LINUX_DIR)
-	$(Q)tar xf downloads/$(LINUX_TARBALL)
-	$(Q)rm -rf linux
-	$(Q)mv $(LINUX_DIR) linux
-	$(Q)touch $@
-
-downloads/$(LINUX_TARBALL):
-	$(ECHO) '  CURL    $@'
-	$(Q)$(CURL) $(LINUX_URL) -o $@
-
-
 edk2: downloads/$(EDK2_TARBALL)
 	$(ECHO) '  TAR     $@'
 	$(Q)rm -rf $(EDK2_DIR)
@@ -149,12 +132,11 @@ downloads/$(AARCH64_NONE_GCC_TARBALL):
 # Clean rules
 #
 
-clean: clean-linux clean-optee-os clean-optee-client clean-optee-linuxdriver clean-uefi clean-arm-tf clean-rootfs clean-app
+clean: clean-linux clean-dtb clean-optee-os clean-optee-client clean-uefi clean-arm-tf clean-rootfs clean-app
 	$(ECHO) '  CLEAN   .'
 
 cleaner: clean
 	$(ECHO) '  CLEANER .'
-	$(Q)rm -rf $(LINUX_DIR) linux .linux
 	$(Q)rm -rf $(EDK2_DIR) edk2
 	$(Q)rm -rf gen_rootfs/$(BUSYBOX_DIR) .busybox
 	$(Q)rm -rf toolchains/$(AARCH64_GCC_DIR)
@@ -163,7 +145,6 @@ cleaner: clean
 # Also remove downloaded files
 distclean: cleaner
 	$(ECHO) '  DISTCL  .'
-	$(Q)rm -f downloads/$(LINUX_TARBALL)
 	$(Q)rm -f downloads/$(EDK2_TARBALL)
 	$(Q)rm -f downloads/$(BUSYBOX_TARBALL)
 	$(Q)rm -f downloads/$(AARCH64_GCC_TARBALL)
@@ -183,7 +164,7 @@ build-linux linux/arch/arm64/boot/Image: linux/.config $(aarch64-none-elf-gcc)
 	    CROSS_COMPILE="$(CCACHE)aarch64-none-elf-" \
 	    LOCALVERSION=
 
-linux/.config: .linux $(aarch64-none-elf-gcc)
+linux/.config: $(aarch64-none-elf-gcc)
 	$(Q)$(MAKE) -C linux ARCH=arm64 CROSS_COMPILE=aarch64-none-elf- defconfig
 
 linux/usr/gen_init_cpio: linux/.config
@@ -200,8 +181,11 @@ clean-linux:
 # OP-TEE
 #
 
+
+optee-os-files := optee_os/out/arm32-plat-vexpress/core/tee.bin
+
 .PHONY: build-optee-os
-build-optee-os optee_os/out/arm32-plat-vexpress/core/tee.bin:
+build-optee-os $(optee-os-files):
 	$(ECHO) '  BUILD   optee_os'
 	$(Q)$(MAKE) -C optee_os \
 	    -j$(_NPROCESSORS_ONLN) \
@@ -238,43 +222,19 @@ clean-optee-client:
 	    CROSS_COMPILE="$(CCACHE)arm-linux-gnueabihf-" \
 	    clean
 
-#
-# OP-TEE Linux driver
-#
-
-.PHONY: build-optee-linuxdriver
-build-optee-linuxdriver optee_linuxdriver/optee.ko: linux/arch/arm64/boot/Image $(aarch64-linux-gnu-gcc)
-	$(ECHO) '  BUILD   optee_linuxdriver'
-	$(Q)$(MAKE) -C linux \
-	    -j$(_NPROCESSORS_ONLN) \
-	    ARCH=arm64 \
-	    CROSS_COMPILE="$(CCACHE)aarch64-linux-gnu-" \
-	    LOCALVERSION= \
-	    M=../optee_linuxdriver \
-	    modules
-
 .PHONY: build-dtb
-build-dtb: optee_linuxdriver/fdts/fvp-foundation-gicv2-psci.dtb
+build-dtb: arm-trusted-firmware/fdts/fvp-foundation-gicv2-psci.dtb
 
-optee_linuxdriver/fdts/fvp-foundation-gicv2-psci.dtb: optee_linuxdriver/fdts/fvp-foundation-gicv2-psci.dts linux/scripts/dtc/dtc
+arm-trusted-firmware/fdts/fvp-foundation-gicv2-psci.dtb: arm-trusted-firmware/fdts/fvp-foundation-gicv2-psci.dts linux/scripts/dtc/dtc
 	$(ECHO) '  GEN     $@'
-	$(Q)cd optee_linuxdriver/fdts && \
+	$(Q)cd arm-trusted-firmware/fdts && \
 	    ../../linux/scripts/dtc/dtc -O dtb -o fvp-foundation-gicv2-psci.dtb \
 		-b 0 -i . fvp-foundation-gicv2-psci.dts
 
 clean-dtb:
-	$(ECHO) '  RM      optee_linuxdriver/fdts/fvp-foundation-gicv2-psci.dtb'
-	$(Q)rm -f optee_linuxdriver/fdts/fvp-foundation-gicv2-psci.dtb
+	$(ECHO) '  RM      arm-trusted-firmware/fdts/fvp-foundation-gicv2-psci.dtb'
+	$(Q)rm -f arm-trusted-firmware/fdts/fvp-foundation-gicv2-psci.dtb
 
-clean-optee-linuxdriver: clean-dtb
-	$(ECHO) '  CLEAN   optee_linuxdriver'
-	$(Q)-[ -d linux ] && $(MAKE) -C linux \
-	    -j$(_NPROCESSORS_ONLN) \
-	    ARCH=arm64 \
-	    CROSS_COMPILE="$(CCACHE)aarch64-linux-gnu-" \
-	    LOCALVERSION= \
-	    M=../optee_linuxdriver \
-	    clean
 
 #
 # UEFI
@@ -379,8 +339,18 @@ clean-arm-tf:
 
 app-files := app/host/secvideo_demo app/ta/ffa39702-9ce0-47e0-a1cb4048cfdb847d.ta
 
+ifneq ($(filter all build-optee-os,$(MAKECMDGOALS)),)
+app-other-projects-deps += build-optee-os
+endif
+ifneq ($(filter all build-optee-client,$(MAKECMDGOALS)),)
+app-other-projects-deps += build-optee-client
+endif
+
+build-app:: $(app-other-projects-deps)
+build-app:: $(app-files)
+
 .PHONY: build-app
-build-app $(app-files):
+$(app-files): $(optee-client-files) $(optee-os-files)
 	$(MAKE) -C app
 
 .PHONU: clean-app
@@ -399,7 +369,7 @@ endif
 build-rootfs:: build-filelist $(rootfs-other-projects-deps)
 build-rootfs:: run/filesystem.cpio.gz
 
-run/filesystem.cpio.gz: gen_rootfs/filelist-tee.txt linux/usr/gen_init_cpio $(optee-client-files) optee_linuxdriver/optee.ko $(app-files)
+run/filesystem.cpio.gz: gen_rootfs/filelist-tee.txt linux/usr/gen_init_cpio $(optee-client-files)
 	$(ECHO) "  GEN    $@"
 	$(Q)(cd gen_rootfs && gen_init_cpio filelist-tee.txt) | gzip >$@
 

@@ -40,7 +40,6 @@ $ ./run/run.sh
 ```
 In the FVP terminal:
 ```sh
-$ modprobe optee
 $ tee-supplicant&
 $ secvideo_demo -h
 ```
@@ -64,11 +63,10 @@ The demo performs the following tasks:
       LCD controller only
     - Initializes the display controller (width, height, frame buffer
       address, image format...)
-  * The kernel mounts the root filesystem and drops to a shell on serial
-    port #0.
-- The OP-TEE linux driver is loaded (modprobe optee)
+  * The kernel initializes the OP-TEE driver (build statically by default),
+    mounts the root filesystem and drops to a shell on serial port #0.
 - The normal world TEE daemon is started (tee-supplicant&)
-- The secvid-demo application is started. It uses the TEE Client library
+- The secvido_demo application is started. It uses the TEE Client library
   (libteec.so) to open a session with a trusted application.
   * The TEE Client calls the OP-TEE driver
   * OP-TEE Core instantiates the required trusted application
@@ -85,12 +83,11 @@ The project has the following directories:
     - app/ta: Trusted side of the application
   - arm-trusted-firmware
   - downloads: Temporary files downloaded when project is built for the first
-  time (Linux sources, BusyBox sources, compilers, etc.)
+  time (BusyBox sources, compilers)
   - edk2: UEFI bootloader
   - gen_rootfs: Utilities to build a minimal root filesystem for Linux, based on BusyBox
-  - linux: The Linux kernel
+  - linux: The Linux kernel, including the OP-TEE driver
   - optee_client: OP-TEE client library
-  - optee_linuxdriver: OP-TEE linux driver and `tee-supplicant` daemon
   - optee_os: OP-TEE
   - run: Contains a script to launch the simulation
   - toolchains: GCC cross-compilers for AArch64

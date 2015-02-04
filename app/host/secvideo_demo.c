@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <err.h>
 #include <assert.h>
+#include <string.h>
 #include <tee_client_api.h>
 #include <secvideo_demo_ta.h>
 
