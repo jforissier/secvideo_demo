@@ -348,12 +348,13 @@ endif
 
 build-app:: $(app-other-projects-deps)
 build-app:: $(app-files)
+build-app:: do-build-app
 
-.PHONY: build-app
-$(app-files): $(optee-client-files) $(optee-os-files)
+.PHONY: do-build-app
+do-build-app $(app-files): $(optee-client-files) $(optee-os-files)
 	$(MAKE) -C app
 
-.PHONU: clean-app
+.PHONY: clean-app
 clean-app:
 	$(MAKE) -C app clean
 

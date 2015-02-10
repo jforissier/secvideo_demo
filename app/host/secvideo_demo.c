@@ -60,17 +60,23 @@ static TEEC_SharedMemory shm = {
 	.size =  512 * 1024,
 	.flags = TEEC_MEM_INPUT,
 };
+static TEEC_SharedMemory secm = {
+	.size =  0,
+	.flags = TEEC_MEM_INPUT /* remove */ | TEEC_MEM_FRAMEBUFFER,
+};
+static int try_read_from_secmem;
 
 #define FP(args...) do { fprintf(stderr, args); } while(0)
 
 static void usage()
 {
-	FP("Usage: secvideo_demo [-s <size>] [-c|<file>] ...\n");
+	FP("Usage: secvideo_demo [-b <size>] [-c|<file>] ...\n");
 	FP("       secvideo_demo -h\n");
 	FP(" -b       Size of the non-secure buffer "
 				"(TEEC_AllocateSharedMemory()) [%zd].\n",
 				shm.size);
 	FP(" -c       Clear the FVP LCD screen.\n");
+	FP(" -r       Try to read back from secure memory\n");
 	FP(" <file>   Display file (800x600 32-bit RGBA, A is ignored).\n");
 	FP("          If extension is .aes, the file is assumed to be "
 				"encrypted with 128-bit\n");
@@ -104,19 +110,25 @@ static void clear_screen(uint32_t color)
 	CHECK_INVOKE(res, err_origin);
 }
 
-static void allocate_shm(void)
+static void allocate_mem(void)
 {
 	TEEC_Result res;
 
 	PR("Request shared memory (%zd bytes)...\n", shm.size);
 	res = TEEC_AllocateSharedMemory(&ctx, &shm);
 	CHECK(res, "TEEC_AllocateSharedMemory");
+	PR("Request secure (frame buffer) memory...\n");
+	res = TEEC_AllocateSharedMemory(&ctx, &secm);
+	CHECK(res, "TEEC_AllocateSharedMemory");
+	PR("Note: FB size is %zd bytes\n", secm.size);
 }
 
-static void free_shm(void)
+static void free_mem(void)
 {
 	PR("Release shared memory...\n");
 	TEEC_ReleaseSharedMemory(&shm);
+	PR("Release secure memory...\n");
+	TEEC_ReleaseSharedMemory(&secm);
 }
 
 static size_t send_image_data(size_t sz, size_t offset, int flags)
@@ -126,13 +138,16 @@ static size_t send_image_data(size_t sz, size_t offset, int flags)
 	uint32_t err_origin;
 
 	op.paramTypes = TEEC_PARAM_TYPES(TEEC_MEMREF_PARTIAL_INPUT,
-					 TEEC_VALUE_INPUT, TEEC_NONE,
+					 TEEC_VALUE_INPUT, TEEC_MEMREF_WHOLE,
 					 TEEC_NONE);
+	/* TA input buffer */
 	op.params[0].memref.parent = &shm;
 	op.params[0].memref.offset = 0;
 	op.params[0].memref.size = sz;
 	op.params[1].value.a = offset;
 	op.params[1].value.b = flags;
+	/* TA output buffer */
+	op.params[2].memref.parent = &secm;
 
 	res = TEEC_InvokeCommand(&sess, TA_SECVIDEO_DEMO_IMAGE_DATA, &op,
 				 &err_origin);
@@ -146,10 +161,11 @@ static void display_file(const char *name)
 	FILE *f;
 	long file_sz;
 	size_t sz, left, offset = 0;
-	int crypt, flags;
+	int crypt, flags, i;
+	uint8_t *p;
 
 	if (!shm.buffer)
-		allocate_shm();
+		allocate_mem();
 
 	PR("Open file '%s'\n", name);
 
@@ -165,10 +181,11 @@ static void display_file(const char *name)
 	crypt = (strlen(name) > 4 &&
 		 !strncmp(name + strlen(name) - 4, ".aes", 4));
 
-	PR("Send image data to trusted app... ");
+	PR("Send image data to trusted app...\n");
 	for (left = file_sz; left > 0; ) {
 		sz = fread(shm.buffer, 1, shm.size, f);
 		if (sz > 0) {
+			PR("%d bytes\n", sz);
 			flags = 0;
 			if (crypt)
 				flags |= IMAGE_ENCRYPTED;
@@ -182,6 +199,15 @@ static void display_file(const char *name)
 		}
 	} while (left > 0);
 	fclose(f);
+
+	if (try_read_from_secmem) {
+		p = secm.buffer;
+		PR("Trying to read back from frame buffer...\n");
+		for (i = 0; i < 16; i++) {
+			printf("0x%02x ", p[i]);
+		}
+		printf("\n");
+	}
 }
 
 int main(int argc, char *argv[])
@@ -222,12 +248,14 @@ int main(int argc, char *argv[])
 			++i;
 			shm.size = strtol(argv[i], NULL, 0);
 			PR("Non-secure buffer size: %zd bytes\n", shm.size);
+		} else if (!strcmp(argv[i], "-r")) {
+			try_read_from_secmem = 1;
 		} else {
 			display_file(argv[i]);
 		}
 	}
 
-	free_shm();
+	free_mem();
 
 	PR("Close session...\n");
 	TEEC_CloseSession(&sess);
