@@ -1,0 +1,6 @@
+config SECVIDEO_DEMO_SECFB_DRIVER
+	bool "Dummy secure frame buffer support"
+	default y
+	---help---
+	  This driver returns a dma-buf file descriptor to the frame buffer
+	  memory used by the TEE in the "secure video demo" prototype.

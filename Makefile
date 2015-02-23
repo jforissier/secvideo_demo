@@ -132,7 +132,7 @@ downloads/$(AARCH64_NONE_GCC_TARBALL):
 # Clean rules
 #
 
-clean: clean-linux clean-dtb clean-optee-os clean-optee-client clean-uefi clean-arm-tf clean-rootfs clean-app
+clean: clean-linux clean-dtb clean-optee-os clean-optee-client clean-secfb-driver clean-uefi clean-arm-tf clean-rootfs clean-app
 	$(ECHO) '  CLEAN   .'
 
 cleaner: clean
@@ -178,9 +178,33 @@ clean-linux:
 	$(Q)-[ -d linux ] && $(MAKE) -C linux ARCH=arm64 CROSS_COMPILE=aarch64-none-elf- clean
 
 #
-# OP-TEE
+# Dummy "secure framebuffer" driver
 #
 
+.PHONY: build-secfb-driver
+build-secfb-driver secfb_driver/secfb.ko: linux/arch/arm64/boot/Image $(aarch64-linux-gnu-gcc)
+	$(ECHO) '  BUILD   optee_linuxdriver'
+	$(Q)$(MAKE) -C linux \
+	    -j$(_NPROCESSORS_ONLN) \
+	    ARCH=arm64 \
+	    CROSS_COMPILE="$(CCACHE)aarch64-linux-gnu-" \
+	    LOCALVERSION= \
+	    M=../secfb_driver \
+	    modules
+
+clean-secfb-driver:
+	$(ECHO) '  CLEAN   secfb_driver'
+	$(Q)-[ -d linux ] && $(MAKE) -C linux \
+	    -j$(_NPROCESSORS_ONLN) \
+	    ARCH=arm64 \
+	    CROSS_COMPILE="$(CCACHE)aarch64-linux-gnu-" \
+	    LOCALVERSION= \
+	    M=../secfb_driver \
+	    clean
+
+#
+# OP-TEE
+#
 
 optee-os-files := optee_os/out/arm32-plat-vexpress/core/tee.bin
 
@@ -370,7 +394,7 @@ endif
 build-rootfs:: build-filelist $(rootfs-other-projects-deps)
 build-rootfs:: rootfs-cpio
 
-rootfs-cpio run/filesystem.cpio.gz: gen_rootfs/filelist-tee.txt linux/usr/gen_init_cpio $(optee-client-files)
+rootfs-cpio run/filesystem.cpio.gz: gen_rootfs/filelist-tee.txt linux/usr/gen_init_cpio $(optee-client-files) secfb_driver/secfb.ko
 	$(ECHO) "  GEN    run/filesystem.cpio.gz"
 	$(Q)(cd gen_rootfs && gen_init_cpio filelist-tee.txt) | gzip >run/filesystem.cpio.gz
 

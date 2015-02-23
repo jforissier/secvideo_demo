@@ -30,8 +30,14 @@
 #include <err.h>
 #include <assert.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
 #include <tee_client_api.h>
 #include <secvideo_demo_ta.h>
+#include <secfb_ioctl.h>
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
@@ -110,6 +116,40 @@ static void clear_screen(uint32_t color)
 	CHECK_INVOKE(res, err_origin);
 }
 
+static void allocate_dmabuf(viod)
+{
+	int ret;
+	int secfb_dev;
+	struct secfb_io secfb;
+	void *mmaped;
+
+	secfb_dev = open("/dev/secfb", 0);
+	if (secfb_dev < 0) {
+		perror("open");
+		return;
+	}
+	ret = ioctl(secfb_dev, SECFB_IOCTL_GET_SECFB_FD, &secfb);
+	if (ret < 0) {
+		perror("ioctl");
+		return;
+	}
+	PR("Note: FB size is %zd bytes\n", secfb.size);
+	mmaped = mmap(NULL, secfb.size, PROT_WRITE|PROT_READ, MAP_SHARED,
+			   secfb.fd, 0);
+	if (!mmaped) {
+		perror("mmap");
+		return;
+	}
+
+#if 0 /* Need updated OP-TEE driver */
+	secm.flags = TEEC_MEM_DMABUF_FD;
+	secm.d.fd = secfb.fd;
+
+	res = TEEC_RegisterSharedMemory(&ctx, &secm);
+	CHECK(res, "TEEC_RegisterSharedMemory");
+#endif
+}
+
 static void allocate_mem(void)
 {
 	TEEC_Result res;
@@ -118,9 +158,15 @@ static void allocate_mem(void)
 	res = TEEC_AllocateSharedMemory(&ctx, &shm);
 	CHECK(res, "TEEC_AllocateSharedMemory");
 	PR("Request secure (frame buffer) memory...\n");
+#if 1
 	res = TEEC_AllocateSharedMemory(&ctx, &secm);
 	CHECK(res, "TEEC_AllocateSharedMemory");
 	PR("Note: FB size is %zd bytes\n", secm.size);
+#else
+	/* Not yet fully implemented */
+	allocate_dmabuf();
+#endif
+
 }
 
 static void free_mem(void)
@@ -185,7 +231,7 @@ static void display_file(const char *name)
 	for (left = file_sz; left > 0; ) {
 		sz = fread(shm.buffer, 1, shm.size, f);
 		if (sz > 0) {
-			PR("%d bytes\n", sz);
+			PR("%zd bytes\n", sz);
 			flags = 0;
 			if (crypt)
 				flags |= IMAGE_ENCRYPTED;

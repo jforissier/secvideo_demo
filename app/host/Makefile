@@ -3,7 +3,7 @@ CROSS_COMPILE ?= $(HOST_CROSS_COMPILE)
 TEEC_EXPORT ?= ../../optee_client/out/export
 
 CC = $(CROSS_COMPILE)gcc
-CFLAGS = -Wall -I$(TEEC_EXPORT)/include -I../ta/include
+CFLAGS = -Wall -I$(TEEC_EXPORT)/include -I../ta/include -I../../secfb_driver
 LDLIBS = -L$(TEEC_EXPORT)/lib -lteec
 
 .PHONY: all clean

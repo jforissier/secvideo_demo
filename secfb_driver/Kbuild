@@ -1,0 +1,3 @@
+obj-m   := secfb.o
+secfb-y := secfb_main.o
+
