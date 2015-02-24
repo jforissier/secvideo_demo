@@ -190,15 +190,23 @@ static TEE_Result image_data(uint32_t param_types, TEE_Param params[4])
 	     sz, offset, flags);
 
 	if (flags & IMAGE_ENCRYPTED) {
+		/*
+		 * By not setting TEE_MEMORY_ACCESS_ANY_OWNER flag, we check
+		 * that the output buffer cannot be observed by a less trusted
+		 * component.
+		 */
+		res = TEE_CheckMemoryAccessRights(TEE_MEMORY_ACCESS_WRITE,
+						  outbuf, sz);
+		if (res != TEE_SUCCESS) {
+			EMSG("%s: output buffer is not secure", __func__);
+			return res;
+		}
+
 		while (sz > 0) {
 			res = decrypt(buf, sz, (uint8_t *)outbuf + offset,
 				      &dsz);
 			if (res != TEE_SUCCESS)
 				return res;
-//			res = TEEExt_UpdateFrameBuffer(imgbuf.buf, dsz,
-//						       offset, NULL);
-//			if (res != TEE_SUCCESS)
-//				return res;
 			sz -= dsz;
 			offset += dsz;
 			buf = (uint8_t *)buf + dsz;
