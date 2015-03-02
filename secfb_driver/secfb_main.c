@@ -7,6 +7,7 @@
 #include <linux/fs.h>
 #include <linux/dma-buf.h>
 #include <asm/uaccess.h>
+#include <linux/slab.h>
 #include "secfb_ioctl.h"
 
 MODULE_LICENSE("GPL");
@@ -35,6 +36,22 @@ static struct sg_table *secfb_dmabuf_map_dma_buf(struct dma_buf_attachment
 							*attach,
 						 enum dma_data_direction dir)
 {
+	struct secfb_buffer *buff = attach->dmabuf->priv;
+	struct sg_table *sgt;
+
+	sgt = kmalloc(sizeof(*sgt), GFP_KERNEL);
+	if (!sgt)
+		return NULL;
+	if (sg_alloc_table(sgt, 1, GFP_KERNEL))
+		goto free_sgt;
+
+	sg_dma_address(sgt->sgl) = buff->paddr;
+	sg_dma_len(sgt->sgl) = buff->size;
+
+	return sgt;
+
+free_sgt:
+	kfree(sgt);
 	return NULL;
 }
 
@@ -42,6 +59,8 @@ static void secfb_dmabuf_unmap_dma_buf(struct dma_buf_attachment *attach,
 				       struct sg_table *table,
 				       enum dma_data_direction dir)
 {
+	sg_free_table(table);
+	kfree(table);
 }
 
 static void secfb_dmabuf_release(struct dma_buf *dmabuf)
