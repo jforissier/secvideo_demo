@@ -169,7 +169,7 @@ static TEE_Result image_data(uint32_t param_types, TEE_Param params[4])
 	uint32_t flags;
 	uint32_t exp_param_types = TEE_PARAM_TYPES(TEE_PARAM_TYPE_MEMREF_INPUT,
 						   TEE_PARAM_TYPE_VALUE_INPUT,
-						   TEE_PARAM_TYPE_MEMREF_INPUT,
+						   TEE_PARAM_TYPE_MEMREF_OUTPUT,
 						   TEE_PARAM_TYPE_NONE);
 
 	if (param_types != exp_param_types)
@@ -182,9 +182,8 @@ static TEE_Result image_data(uint32_t param_types, TEE_Param params[4])
 	outbuf = params[2].memref.buffer;
 	outsz = params[2].memref.size;
 
-	if (offset + sz > outsz) {
+	if (offset + sz > outsz)
 		return TEE_ERROR_SHORT_BUFFER;
-	}
 
 	DMSG("Image data: %zd bytes to framebuffer offset %u (flags: 0x%04x)",
 	     sz, offset, flags);

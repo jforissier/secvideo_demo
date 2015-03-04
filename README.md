@@ -40,6 +40,8 @@ $ ./run/run.sh
 ```
 In the FVP terminal:
 ```sh
+# modprobe secfb
+# modprobe optee_armtz
 $ tee-supplicant&
 $ secvideo_demo -h
 ```
@@ -63,8 +65,12 @@ The demo performs the following tasks:
       LCD controller only
     - Initializes the display controller (width, height, frame buffer
       address, image format...)
-  * The kernel initializes the OP-TEE driver (build statically by default),
-    mounts the root filesystem and drops to a shell on serial port #0.
+  * The kernel mounts the root filesystem and drops to a shell on serial
+    port #0.
+  * The OP-TEE linux driver is loaded (modprobe optee_armtz).
+  * The dummy "secure framebuffer" is loaded (modprobe secfb). It implements
+    an ioctl() that returns the buffer used by the secure OS as a framebuffer
+    (this is the buffer used when configuring the LCD display controller).
 - The normal world TEE daemon is started (tee-supplicant&)
 - The secvido_demo application is started. It uses the TEE Client library
   (libteec.so) to open a session with a trusted application.

@@ -1,10 +1,10 @@
 HOST_CROSS_COMPILE ?= ../../toolchains/gcc-linaro-aarch64-linux-gnu-4.9-2014.08_linux/bin/aarch64-linux-gnu-
 CROSS_COMPILE ?= $(HOST_CROSS_COMPILE)
-TEEC_EXPORT ?= ../../optee_client/out/export
+TEE_CLIENT ?= ../../optee_client
 
 CC = $(CROSS_COMPILE)gcc
-CFLAGS = -Wall -I$(TEEC_EXPORT)/include -I../ta/include -I../../secfb_driver
-LDLIBS = -L$(TEEC_EXPORT)/lib -lteec
+CFLAGS = -Wall -I$(TEE_CLIENT)/public -I../ta/include -I../../secfb_driver
+LDLIBS = -L$(TEE_CLIENT)/out/export/lib -lteec
 
 .PHONY: all clean
 

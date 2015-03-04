@@ -45,8 +45,7 @@ static struct sg_table *secfb_dmabuf_map_dma_buf(struct dma_buf_attachment
 	if (sg_alloc_table(sgt, 1, GFP_KERNEL))
 		goto free_sgt;
 
-	sg_dma_address(sgt->sgl) = buff->paddr;
-	sg_dma_len(sgt->sgl) = buff->size;
+	sg_set_page(sgt->sgl, phys_to_page(buff->paddr), buff->size, 0);
 
 	return sgt;
 

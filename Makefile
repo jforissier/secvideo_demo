@@ -132,7 +132,7 @@ downloads/$(AARCH64_NONE_GCC_TARBALL):
 # Clean rules
 #
 
-clean: clean-linux clean-dtb clean-optee-os clean-optee-client clean-secfb-driver clean-uefi clean-arm-tf clean-rootfs clean-app
+clean: clean-linux clean-dtb clean-optee-os clean-optee-client clean-optee-linuxdriver clean-secfb-driver clean-uefi clean-arm-tf clean-rootfs clean-app
 	$(ECHO) '  CLEAN   .'
 
 cleaner: clean
@@ -245,6 +245,34 @@ clean-optee-client:
 	    -j$(_NPROCESSORS_ONLN) \
 	    CROSS_COMPILE="$(CCACHE)arm-linux-gnueabihf-" \
 	    clean
+
+#
+# OP-TEE Linux driver
+#
+
+optee-linuxdriver-files := optee_linuxdriver/optee.ko \
+			   optee_linuxdriver/optee_armtz.ko
+
+.PHONY: build-optee-linuxdriver
+build-optee-linuxdriver $(optee-linuxdriver-files): linux/arch/arm64/boot/Image $(aarch64-linux-gnu-gcc)
+	$(ECHO) '  BUILD   optee_linuxdriver'
+	$(Q)$(MAKE) -C linux \
+	   -j$(_NPROCESSORS_ONLN) \
+	   ARCH=arm64 \
+	   CROSS_COMPILE="$(CCACHE)aarch64-linux-gnu-" \
+	   LOCALVERSION= \
+	   M=../optee_linuxdriver \
+	   modules
+
+clean-optee-linuxdriver: clean-dtb
+	$(ECHO) '  CLEAN   optee_linuxdriver'
+	$(Q)-[ -d linux ] && $(MAKE) -C linux \
+	   -j$(_NPROCESSORS_ONLN) \
+	   ARCH=arm64 \
+	   CROSS_COMPILE="$(CCACHE)aarch64-linux-gnu-" \
+	   LOCALVERSION= \
+	   M=../optee_linuxdriver \
+	   clean
 
 .PHONY: build-dtb
 build-dtb: arm-trusted-firmware/fdts/fvp-foundation-gicv2-psci.dtb
@@ -389,12 +417,15 @@ clean-app:
 ifneq ($(filter all build-app,$(MAKECMDGOALS)),)
 rootfs-other-projects-deps += build-app
 endif
+ifneq ($(filter all build-optee-linuxdriver,$(MAKECMDGOALS)),)
+rootfs-other-projects-deps += build-optee-linuxdriver
+endif
 
 .PHONY: build-rootfs
 build-rootfs:: build-filelist $(rootfs-other-projects-deps)
 build-rootfs:: rootfs-cpio
 
-rootfs-cpio run/filesystem.cpio.gz: gen_rootfs/filelist-tee.txt linux/usr/gen_init_cpio $(optee-client-files) secfb_driver/secfb.ko
+rootfs-cpio run/filesystem.cpio.gz: gen_rootfs/filelist-tee.txt linux/usr/gen_init_cpio $(optee-client-files) $(optee-linuxdriver-files) secfb_driver/secfb.ko
 	$(ECHO) "  GEN    run/filesystem.cpio.gz"
 	$(Q)(cd gen_rootfs && gen_init_cpio filelist-tee.txt) | gzip >run/filesystem.cpio.gz
 

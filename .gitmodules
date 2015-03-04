@@ -13,3 +13,6 @@
 [submodule "linux"]
 	path = linux
 	url = https://github.com/jforissier/linux
+[submodule "optee_linuxdriver"]
+	path = optee_linuxdriver
+	url = https://github.com/jforissier/optee_linuxdriver

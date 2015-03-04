@@ -3,6 +3,12 @@ dir /lib/modules 755 0 0
 dir /lib/modules/${KERNEL_VERSION} 755 0 0
 file /lib/modules/${KERNEL_VERSION}/secfb.ko ${TOP}/secfb_driver/secfb.ko 755 0 0
 
+# OP-TEE device
+dir /lib/modules 755 0 0
+dir /lib/modules/${KERNEL_VERSION} 755 0 0
+file /lib/modules/${KERNEL_VERSION}/optee.ko ${TOP}/optee_linuxdriver/core/optee.ko 755 0 0
+file /lib/modules/${KERNEL_VERSION}/optee_armtz.ko ${TOP}/optee_linuxdriver/armtz/optee_armtz.ko 755 0 0
+
 # OP-TEE Client
 file /bin/tee-supplicant ${TOP}/optee_client/out/export/bin/tee-supplicant 755 0 0
 dir /lib/aarch64-linux-gnu 755 0 0

@@ -66,17 +66,15 @@ static TEEC_SharedMemory shm = {
 	.size =  512 * 1024,
 	.flags = TEEC_MEM_INPUT,
 };
-static TEEC_SharedMemory secm = {
-	.size =  0,
-	.flags = TEEC_MEM_INPUT /* remove */ | TEEC_MEM_FRAMEBUFFER,
-};
+static TEEC_SharedMemory secm;
+
 static int try_read_from_secmem;
 
 #define FP(args...) do { fprintf(stderr, args); } while(0)
 
 static void usage()
 {
-	FP("Usage: secvideo_demo [-b <size>] [-c|<file>] ...\n");
+	FP("Usage: secvideo_demo [-b <size>] [-r] [-c|<file>] ...\n");
 	FP("       secvideo_demo -h\n");
 	FP(" -b       Size of the non-secure buffer "
 				"(TEEC_AllocateSharedMemory()) [%zd].\n",
@@ -116,12 +114,12 @@ static void clear_screen(uint32_t color)
 	CHECK_INVOKE(res, err_origin);
 }
 
-static void allocate_dmabuf(viod)
+static void allocate_secmem(void)
 {
-	int ret;
-	int secfb_dev;
+	int ret, secfb_dev;
 	struct secfb_io secfb;
 	void *mmaped;
+	TEEC_Result res;
 
 	secfb_dev = open("/dev/secfb", 0);
 	if (secfb_dev < 0) {
@@ -134,20 +132,20 @@ static void allocate_dmabuf(viod)
 		return;
 	}
 	PR("Note: FB size is %zd bytes\n", secfb.size);
+
 	mmaped = mmap(NULL, secfb.size, PROT_WRITE|PROT_READ, MAP_SHARED,
 			   secfb.fd, 0);
 	if (!mmaped) {
 		perror("mmap");
 		return;
 	}
+	secm.buffer = mmaped;
+	secm.size = secfb.size;
 
-#if 0 /* Need updated OP-TEE driver */
-	secm.flags = TEEC_MEM_DMABUF_FD;
 	secm.d.fd = secfb.fd;
-
+	secm.flags = TEEC_MEM_OUTPUT | TEEC_MEM_DMABUF;
 	res = TEEC_RegisterSharedMemory(&ctx, &secm);
 	CHECK(res, "TEEC_RegisterSharedMemory");
-#endif
 }
 
 static void allocate_mem(void)
@@ -158,15 +156,7 @@ static void allocate_mem(void)
 	res = TEEC_AllocateSharedMemory(&ctx, &shm);
 	CHECK(res, "TEEC_AllocateSharedMemory");
 	PR("Request secure (frame buffer) memory...\n");
-#if 1
-	res = TEEC_AllocateSharedMemory(&ctx, &secm);
-	CHECK(res, "TEEC_AllocateSharedMemory");
-	PR("Note: FB size is %zd bytes\n", secm.size);
-#else
-	/* Not yet fully implemented */
-	allocate_dmabuf();
-#endif
-
+	allocate_secmem();
 }
 
 static void free_mem(void)
