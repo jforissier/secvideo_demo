@@ -20,12 +20,10 @@ static int is_open;		/* Exclusive access */
 static struct secfb_buffer {
 	u32 paddr;
 	size_t size;
-	int fd;
 } buffer = {
-	.paddr = 0xff000000,
-	.size = 0x00200000,
+	.paddr = 0xff000000,	/* FRAMEBUFFER_BASE in OP-TEE OS */
+	.size = 0x00200000,	/* FRAMEBUFFER_SIZE in OP-TEE OS */
 };
-static struct dma_buf *secfb_dmabuf;	/* This exports the secure frame buffer */
 static struct miscdevice secfb_dev;
 
 /*
@@ -135,23 +133,19 @@ static int secfb_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static int do_get_secfb_fd(struct secfb_io __user *u_secfb)
+static int get_secfb_fd(struct secfb_io __user *u_secfb)
 {
 	int ret;
 	struct secfb_io k_secfb;
+	struct dma_buf *secfb_dmabuf;
 
-	if (!secfb_dmabuf) {
-		secfb_dmabuf = dma_buf_export(&buffer, &dma_buf_ops,
-					      buffer.size, O_RDWR, NULL);
-		dev_dbg(secfb_dev.this_device, "secfb_dmabuf = %p",
-			secfb_dmabuf);
-		if (!secfb_dmabuf)
-			return -ENOMEM;
-		buffer.fd = dma_buf_fd(secfb_dmabuf, 0);
-	}
+	secfb_dmabuf = dma_buf_export(&buffer, &dma_buf_ops,
+				      buffer.size, O_RDWR, NULL);
+	if (!secfb_dmabuf)
+		return -ENOMEM;
 
 	memset(&k_secfb, 0, sizeof(k_secfb));
-	k_secfb.fd = buffer.fd;
+	k_secfb.fd = dma_buf_fd(secfb_dmabuf, 0);
 	k_secfb.size = buffer.size;
 	ret = copy_to_user(u_secfb, &k_secfb, sizeof(*u_secfb));
 
@@ -161,13 +155,10 @@ static int do_get_secfb_fd(struct secfb_io __user *u_secfb)
 static long secfb_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	int ret;
-	struct device *dev = secfb_dev.this_device;
 
 	switch (cmd) {
 	case SECFB_IOCTL_GET_SECFB_FD:
-		dev_dbg(dev, "SECFB_IOCTL_GET_SECFB_FD");
-
-		ret = do_get_secfb_fd((struct secfb_io __user *)arg);
+		ret = get_secfb_fd((struct secfb_io __user *)arg);
 		break;
 	default:
 		ret = -ENOSYS;
