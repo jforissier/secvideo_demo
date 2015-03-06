@@ -196,10 +196,8 @@ static TEE_Result image_data(uint32_t param_types, TEE_Param params[4])
 		 */
 		res = TEE_CheckMemoryAccessRights(TEE_MEMORY_ACCESS_WRITE,
 						  outbuf, sz);
-		if (res != TEE_SUCCESS) {
-			EMSG("%s: output buffer is not secure", __func__);
-			return res;
-		}
+		if (res != TEE_SUCCESS)
+			EMSG("%s: WARNING: output buffer is not secure", __func__);
 
 		while (sz > 0) {
 			res = decrypt(buf, sz, (uint8_t *)outbuf + offset,

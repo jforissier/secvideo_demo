@@ -40,10 +40,22 @@ $ ./run/run.sh
 ```
 In the FVP terminal:
 ```sh
-# modprobe secfb
-# modprobe optee_armtz
-$ tee-supplicant&
-$ secvideo_demo -h
+modprobe secfb
+modprobe optee_armtz
+sleep 1
+tee-supplicant&
+secvideo_demo -h
+# -ns: do not make output buffer secure, -r: read data from NS world
+# This succeeds: decrypted data can be read from non-secure output buffer
+# (0xff's are read which is the white background)
+secvideo_demo -ns linaro-logo-web.rgba.aes -r
+# Clear screen
+secvideo_demo -c
+# This fails: image is displayed but NS world can't read from secure
+# output buffer (only 0x00's are read)
+secvideo_demo linaro-logo-web.rgba.aes -r
+# NOTE: BUG: once output buffer is secured it cannot be made non-secure
+# unless the FVP is rebooted
 ```
 
 ## More information
