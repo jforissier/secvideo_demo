@@ -28,7 +28,7 @@
 
 filename = $(lastword $(subst /, ,$(1)))
 
-EDK2_URL = https://github.com/tianocore/edk2/archive/8c83d0c0b9bd102cd905c83b2644a543e9711815.tar.gz
+EDK2_URL = https://github.com/tianocore/edk2/archive/b85f57995e010db57dc46be445c444d42a8939f2.tar.gz
 EDK2_TARBALL = $(call filename,$(EDK2_URL))
 EDK2_DIR = edk2-$(EDK2_TARBALL:.tar.gz=)
 
@@ -36,17 +36,17 @@ BUSYBOX_URL = http://busybox.net/downloads/busybox-1.23.0.tar.bz2
 BUSYBOX_TARBALL = $(call filename,$(BUSYBOX_URL))
 BUSYBOX_DIR = $(BUSYBOX_TARBALL:.tar.bz2=)
 
-AARCH64_GCC_URL = http://releases.linaro.org/14.08/components/toolchain/binaries/gcc-linaro-aarch64-linux-gnu-4.9-2014.08_linux.tar.xz
+AARCH64_GCC_URL = http://releases.linaro.org/components/toolchain/binaries/4.9-2017.01/aarch64-linux-gnu/gcc-linaro-4.9.4-2017.01-x86_64_aarch64-linux-gnu.tar.xz
 AARCH64_GCC_TARBALL = $(call filename,$(AARCH64_GCC_URL))
 AARCH64_GCC_DIR = $(AARCH64_GCC_TARBALL:.tar.xz=)
 
-aarch64-linux-gnu-gcc := toolchains/$(AARCH64_GCC_DIR)
+aarch64-gcc := toolchains/$(AARCH64_GCC_DIR)
 
-AARCH64_NONE_GCC_URL = http://releases.linaro.org/14.07/components/toolchain/binaries/gcc-linaro-aarch64-none-elf-4.9-2014.07_linux.tar.xz
-AARCH64_NONE_GCC_TARBALL = $(call filename,$(AARCH64_NONE_GCC_URL))
-AARCH64_NONE_GCC_DIR = $(AARCH64_NONE_GCC_TARBALL:.tar.xz=)
+ARM_GCC_URL = http://releases.linaro.org/components/toolchain/binaries/4.9-2017.01/arm-linux-gnueabihf/gcc-linaro-4.9.4-2017.01-x86_64_arm-linux-gnueabihf.tar.xz
+ARM_GCC_TARBALL = $(call filename,$(ARM_GCC_URL))
+ARM_GCC_DIR = $(ARM_GCC_TARBALL:.tar.xz=)
 
-aarch64-none-elf-gcc := toolchains/$(AARCH64_NONE_GCC_DIR)
+arm-gcc := toolchains/$(ARM_GCC_DIR)
 
 SHELL = /bin/bash
 CURL = curl -L
@@ -55,7 +55,7 @@ ifneq (,$(shell which ccache))
 CCACHE = ccache #
 endif
 
-export PATH := $(PATH):$(PWD)/toolchains/$(AARCH64_NONE_GCC_DIR)/bin:$(PWD)/toolchains/$(AARCH64_GCC_DIR)/bin:$(PWD)/linux/usr
+export PATH := $(PATH):$(PWD)/toolchains/$(ARM_GCC_DIR)/bin:$(PWD)/toolchains/$(AARCH64_GCC_DIR)/bin:$(PWD)/linux/usr
 
 
 # Read stdin, expand ${VAR} environment variables, output to stdout
@@ -117,16 +117,15 @@ downloads/$(AARCH64_GCC_TARBALL):
 	$(ECHO) '  CURL    $@'
 	$(Q)$(CURL) $(AARCH64_GCC_URL) -o $@
 
-
-toolchains/$(AARCH64_NONE_GCC_DIR): downloads/$(AARCH64_NONE_GCC_TARBALL)
+toolchains/$(ARM_GCC_DIR): downloads/$(ARM_GCC_TARBALL)
 	$(ECHO) '  TAR     $@'
-	$(Q)rm -rf toolchains/$(AARCH64_NONE_GCC_DIR)
-	$(Q)cd toolchains && tar xf ../downloads/$(AARCH64_NONE_GCC_TARBALL)
+	$(Q)rm -rf toolchains/$(ARM_GCC_DIR)
+	$(Q)cd toolchains && tar xf ../downloads/$(ARM_GCC_TARBALL)
 	$(Q)touch $@
 
-downloads/$(AARCH64_NONE_GCC_TARBALL):
+downloads/$(ARM_GCC_TARBALL):
 	$(ECHO) '  CURL    $@'
-	$(Q)$(CURL) $(AARCH64_NONE_GCC_URL) -o $@
+	$(Q)$(CURL) $(ARM_GCC_URL) -o $@
 
 #
 # Clean rules
@@ -140,7 +139,7 @@ cleaner: clean
 	$(Q)rm -rf $(EDK2_DIR) edk2
 	$(Q)rm -rf gen_rootfs/$(BUSYBOX_DIR) .busybox
 	$(Q)rm -rf toolchains/$(AARCH64_GCC_DIR)
-	$(Q)rm -rf toolchains/$(AARCH64_NONE_GCC_DIR)
+	$(Q)rm -rf toolchains/$(ARM_GCC_DIR)
 
 # Also remove downloaded files
 distclean: cleaner
@@ -148,7 +147,7 @@ distclean: cleaner
 	$(Q)rm -f downloads/$(EDK2_TARBALL)
 	$(Q)rm -f downloads/$(BUSYBOX_TARBALL)
 	$(Q)rm -f downloads/$(AARCH64_GCC_TARBALL)
-	$(Q)rm -f downloads/$(AARCH64_NONE_GCC_DIR)
+	$(Q)rm -f downloads/$(ARM_GCC_TARBALL)
 	$(MAKE) -C app distclean
 
 
@@ -157,32 +156,32 @@ distclean: cleaner
 #
 
 .PHONY: build-linux
-build-linux linux/arch/arm64/boot/Image: linux/.config $(aarch64-none-elf-gcc)
+build-linux linux/arch/arm64/boot/Image: linux/.config $(aarch64-gcc)
 	$(Q)$(MAKE) -C linux \
 	    -j$(_NPROCESSORS_ONLN) \
 	    ARCH=arm64 \
-	    CROSS_COMPILE="$(CCACHE)aarch64-none-elf-" \
+	    CROSS_COMPILE="$(CCACHE)aarch64-linux-gnu-" \
 	    LOCALVERSION=
 
-linux/.config: $(aarch64-none-elf-gcc)
-	$(Q)$(MAKE) -C linux ARCH=arm64 CROSS_COMPILE=aarch64-none-elf- defconfig
+linux/.config: $(aarch64-gcc)
+	$(Q)$(MAKE) -C linux ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- defconfig
 
 linux/usr/gen_init_cpio: linux/.config
 	$(Q)$(MAKE) -C linux ARCH=arm64 usr/gen_init_cpio
 
-linux/scripts/dtc/dtc: linux/.config $(aarch64-none-elf-gcc)
-	$(Q)$(MAKE) -C linux ARCH=arm64 CROSS_COMPILE=aarch64-none-elf- scripts
+linux/scripts/dtc/dtc: linux/.config $(aarch64-gcc)
+	$(Q)$(MAKE) -C linux ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- scripts
 
 clean-linux:
 	$(ECHO) '  CLEAN   linux'
-	$(Q)-[ -d linux ] && $(MAKE) -C linux ARCH=arm64 CROSS_COMPILE=aarch64-none-elf- clean
+	$(Q)-[ -d linux ] && $(MAKE) -C linux ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- clean
 
 #
 # Dummy "secure framebuffer" driver
 #
 
 .PHONY: build-secfb-driver
-build-secfb-driver secfb_driver/secfb.ko: linux/arch/arm64/boot/Image $(aarch64-linux-gnu-gcc)
+build-secfb-driver secfb_driver/secfb.ko: linux/arch/arm64/boot/Image $(aarch64-gcc)
 	$(ECHO) '  BUILD   optee_linuxdriver'
 	$(Q)$(MAKE) -C linux \
 	    -j$(_NPROCESSORS_ONLN) \
@@ -209,7 +208,7 @@ clean-secfb-driver:
 optee-os-files := optee_os/out/arm32-plat-vexpress/core/tee.bin
 
 .PHONY: build-optee-os
-build-optee-os $(optee-os-files):
+build-optee-os $(optee-os-files): $(arm-gcc)
 	$(ECHO) '  BUILD   optee_os'
 	$(Q)$(MAKE) -C optee_os \
 	    -j$(_NPROCESSORS_ONLN) \
@@ -217,7 +216,7 @@ build-optee-os $(optee-os-files):
 	    PLATFORM=vexpress-fvp \
 	    CFG_TEE_CORE_LOG_LEVEL=3
 
-clean-optee-os:
+clean-optee-os: $(arm-gcc)
 	$(ECHO) '  CLEAN   optee_os'
 	$(Q)$(MAKE) -C optee_os \
 	    -j$(_NPROCESSORS_ONLN) \
@@ -233,7 +232,7 @@ optee-client-files := optee_client/out/export/lib/libteec.so.1.0 \
 		      optee_client/out/export/bin/tee-supplicant
 
 .PHONY: build-optee-client
-build-optee-client $(optee-client-files): $(aarch64-linux-gnu-gcc)
+build-optee-client $(optee-client-files): $(aarch64-gcc)
 	$(ECHO) '  BUILD   optee_client'
 	$(Q)$(MAKE) -C optee_client \
 	    -j$(_NPROCESSORS_ONLN) \
@@ -243,7 +242,7 @@ clean-optee-client:
 	$(ECHO) '  CLEAN   optee_client'
 	$(Q)$(MAKE) -C optee_client \
 	    -j$(_NPROCESSORS_ONLN) \
-	    CROSS_COMPILE="$(CCACHE)arm-linux-gnueabihf-" \
+	    CROSS_COMPILE="$(CCACHE)aarch64-linux-gnu-" \
 	    clean
 
 #
@@ -254,7 +253,7 @@ optee-linuxdriver-files := optee_linuxdriver/optee.ko \
 			   optee_linuxdriver/optee_armtz.ko
 
 .PHONY: build-optee-linuxdriver
-build-optee-linuxdriver $(optee-linuxdriver-files): linux/arch/arm64/boot/Image $(aarch64-linux-gnu-gcc)
+build-optee-linuxdriver $(optee-linuxdriver-files): linux/arch/arm64/boot/Image $(aarch64-gcc)
 	$(ECHO) '  BUILD   optee_linuxdriver'
 	$(Q)$(MAKE) -C linux \
 	   -j$(_NPROCESSORS_ONLN) \
@@ -293,9 +292,9 @@ clean-dtb:
 #
 
 .PHONY: build-uefi
-build-uefi edk2/Build/ArmVExpress-FVP-AArch64/RELEASE_GCC49/FV/FVP_AARCH64_EFI.fd: $(aarch64-none-elf-gcc) edk2/.BaseTools
+build-uefi edk2/Build/ArmVExpress-FVP-AArch64/RELEASE_GCC49/FV/FVP_AARCH64_EFI.fd: $(aarch64-gcc) edk2/.BaseTools
 	$(ECHO) '  BUILD   edk2'
-	$(Q)set -e ; cd edk2 ; export GCC49_AARCH64_PREFIX='"$(CCACHE)aarch64-none-elf-"' ; \
+	$(Q)set -e ; cd edk2 ; export GCC49_AARCH64_PREFIX='"$(CCACHE)aarch64-linux-gnu-"' ; \
 	    . edksetup.sh ; \
 	    $(MAKE) -f ArmPlatformPkg/Scripts/Makefile \
 		EDK2_ARCH=AARCH64 \
@@ -306,9 +305,9 @@ build-uefi edk2/Build/ArmVExpress-FVP-AArch64/RELEASE_GCC49/FV/FVP_AARCH64_EFI.f
 
 edk2/.BaseTools: edk2
 	$(ECHO) '  BUILD   edk2/BaseTools'
-	$(Q)set -e ; cd edk2 ; export GCC49_AARCH64_PREFIX='"$(CCACHE)aarch64-none-elf-"' ; \
+	$(Q)set -e ; cd edk2 ; export GCC49_AARCH64_PREFIX='"$(CCACHE)aarch64-linux-gnu-"' ; \
 	    . edksetup.sh ; \
-	    $(MAKE) -C BaseTools CC="$(CCACHE)gcc" CXX="$(CCACHE)g++" ; \
+	    $(MAKE) -C BaseTools CC="$(CCACHE)gcc" CXX="$(CCACHE)g++" CXXFLAGS=-fpermissive ; \
 	    touch .BaseTools
 
 clean-uefi: clean-uefi-basetools
@@ -344,7 +343,7 @@ define arm-tf-make
 	    export BL32=$(PWD)/optee_os/out/arm32-plat-vexpress/core/tee.bin ; \
 	    export BL33=$(PWD)/edk2/Build/ArmVExpress-FVP-AArch64/RELEASE_GCC49/FV/FVP_AARCH64_EFI.fd ; \
 	    $(MAKE) -C arm-trusted-firmware \
-		CROSS_COMPILE="$(CCACHE)aarch64-none-elf-" \
+		CROSS_COMPILE="$(CCACHE)aarch64-linux-gnu-" \
 		DEBUG=1 \
 		FVP_TSP_RAM_LOCATION=tdram \
 		FVP_SHARED_DATA_LOCATION=tdram \
@@ -354,7 +353,7 @@ define arm-tf-make
 endef
 
 .PHONY: build-arm-tf-bl2-bl31
-build-arm-tf-bl2-bl31 $(ATF)/bl2.bin $(ATF)/bl31.bin: $(aarch64-none-elf-gcc)
+build-arm-tf-bl2-bl31 $(ATF)/bl2.bin $(ATF)/bl31.bin: $(aarch64-gcc)
 	$(call arm-tf-make, bl2 bl31)
 
 # "$(MAKE) -C arm-trusted-firmware fip" always updates fip.bin, even if it is
@@ -374,11 +373,11 @@ endif
 build-arm-tf-fip:: build-arm-tf-bl2-bl31 $(tf-other-projects-deps)
 build-arm-tf-fip:: $(ATF)/fip.bin
 
-$(ATF)/fip.bin: $(ATF)/bl2.bin $(ATF)/bl31.bin optee_os/out/arm32-plat-vexpress/core/tee.bin edk2/Build/ArmVExpress-FVP-AArch64/RELEASE_GCC49/FV/FVP_AARCH64_EFI.fd $(aarch64-none-elf-gcc)
+$(ATF)/fip.bin: $(ATF)/bl2.bin $(ATF)/bl31.bin optee_os/out/arm32-plat-vexpress/core/tee.bin edk2/Build/ArmVExpress-FVP-AArch64/RELEASE_GCC49/FV/FVP_AARCH64_EFI.fd $(aarch64-gcc)
 	$(call arm-tf-make, fip)
 
 .PHONY: build-arm-tf-bl1
-build-arm-tf-bl1 arm-trusted-firmware/build/fvp/debug/bl1.bin: $(aarch64-none-elf-gcc)
+build-arm-tf-bl1 arm-trusted-firmware/build/fvp/debug/bl1.bin: $(aarch64-gcc)
 	$(call arm-tf-make, bl1)
 
 clean-arm-tf:
@@ -404,7 +403,7 @@ build-app:: do-build-app
 
 .PHONY: do-build-app
 do-build-app $(app-files): $(optee-client-files) $(optee-os-files)
-	$(MAKE) -C app
+	$(MAKE) -C app HOST_CROSS_COMPILE="$(CCACHE)aarch64-linux-gnu-"
 
 .PHONY: clean-app
 clean-app:
@@ -437,7 +436,7 @@ gen_rootfs/filelist-tee.txt: gen_rootfs/filelist-final.txt tee-files.txt
 	    $(expand-env-var) <tee-files.txt >>$@
 
 .PHONY: build-filelist
-build-filelist gen_rootfs/filelist-final.txt: .busybox $(aarch64-linux-gnu-gcc)
+build-filelist gen_rootfs/filelist-final.txt: .busybox $(aarch64-gcc)
 	$(ECHO) '  GEN    gen_rootfs/filelist-final.txt'
 	$(Q)cd gen_rootfs ; \
 	    export CC_DIR=$(PWD)/toolchains/$(AARCH64_GCC_DIR) ; \

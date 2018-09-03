@@ -1,20 +1,26 @@
+THIS CODE IS OBSOLETE
+
 This project is a proof-of-concept for secure video playback on
 ARM Trustzone hardware running Linux and OP-TEE. A linux application relies
 on OP-TEE and a Trusted Application to decrypt and display an image in a
 secure way.
 
-The demo runs on *Base FVP* software models such as
-`FVP_Base_AEMv8A-AEMv8A`. Note that the (free) *Foundation Platform* can
-*not* run this demo, because it lacks LCD display emulation. See
-http://www.arm.com/products/tools/models/fast-models/foundation-model.php for
-details.
+Initially, the Arm *Base FVP* software model was used. This branch is an
+attempt at running the code with the free Arm-v8A emulator tool called
+*Foundation Platform*, available from
+https://developer.arm.com/products/system-design/fixed-virtual-platforms.
+Unfortunately the boot hangs shortly after entering TF-A BL31. Anyway I am
+not even sure the model emulates a display and a TZASC...
+
+I'm keeping the instructions below in case someone would want to experiment
+further.
 
 ## TL;DR
 
 1. Install the required compilers, tools and libraries (I am using Ubuntu 14.04
 x86_64 as my development system):
 ```sh
-$ sudo apt-get install uuid-dev gcc-arm-linux-gnueabihf
+$ sudo apt-get install uuid-dev imagemagick
 # On x86_64 systems only #
 $ sudo apt-get install libc6:i386 libstdc++6:i386 libz1:i386
 ```
@@ -27,16 +33,17 @@ $ git submodule update --init
 $ make
 ```
 
-3. Define the FVP environment in `run/env.sh`. Here is mine:
+3. Download the *Arm-v8A Foundation Platform* software from
+https://developer.arm.com/products/system-design/fixed-virtual-platforms and
+make sure that `Foundation_Platform` is in your `$PATH`, for instance:
 ```sh
-export ARMLMD_LICENSE_FILE=8224@127.0.0.1
-export PATH=~/FVP_Base_AEMv8A-AEMv8A/models/Linux64_GCC-4.1:$PATH
-#FVP_CMD=FVP_Base_AEMv8A-AEMv8A
+export PATH=~/Foundation_Platformpkg/models/Linux64_GCC-4.9/:$PATH
 ```
 
 4. Run the demo:
 ```sh
 $ ./run/run.sh
+# FIXME: the boot hangs at BL31 initialization
 ```
 In the FVP terminal:
 ```sh
