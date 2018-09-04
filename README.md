@@ -1,3 +1,5 @@
+THIS CODE IS OBSOLETE AND WILL NOT EVEN BUILD ANYMORE
+
 This project is a proof-of-concept for secure video playback on
 ARM Trustzone hardware running Linux and OP-TEE. A linux application relies
 on OP-TEE and a Trusted Application to decrypt and display an image in a
